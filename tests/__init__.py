@@ -20,6 +20,6 @@ implementation provided by Flask-Restless, as well as additional
 features not discussed in the specification.
 
 Run the full test suite from the command-line using ``nosetests`` (or
-``python setup.py test``).
+``python setUp.py test``).
 
 """

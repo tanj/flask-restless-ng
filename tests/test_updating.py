@@ -20,6 +20,7 @@ specification.
 """
 from __future__ import division
 
+import unittest
 from datetime import datetime
 try:
     from flask.ext.sqlalchemy import SQLAlchemy
@@ -40,9 +41,9 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
-from flask.ext.restless import APIManager
-from flask.ext.restless import CONTENT_TYPE
-from flask.ext.restless import ProcessingException
+from flask_restless import APIManager
+from flask_restless import CONTENT_TYPE
+from flask_restless import ProcessingException
 
 from .helpers import BetterJSONEncoder as JSONEncoder
 from .helpers import check_sole_error
@@ -52,20 +53,19 @@ from .helpers import loads
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
 from .helpers import ManagerTestBase
-from .helpers import skip
 
 
 class TestUpdating(ManagerTestBase):
     """Tests for updating resources."""
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestUpdating, self).setup()
+        super(TestUpdating, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -856,8 +856,8 @@ class TestUpdating(ManagerTestBase):
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""
 
-    def setup(self):
-        super(TestProcessors, self).setup()
+    def setUp(self):
+        super(TestProcessors, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -1000,14 +1000,14 @@ class TestAssociationProxy(ManagerTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
-        :class:`~flask.ext.restless.manager.APIManager` for that application,
+        :class:`~flask_restless.manager.APIManager` for that application,
         and creates the ReSTful API endpoints for the models used in the test
         methods.
 
         """
-        super(TestAssociationProxy, self).setup()
+        super(TestAssociationProxy, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -1081,7 +1081,7 @@ class TestAssociationProxy(ManagerTestBase):
         assert response.status_code == 204
         assert [tag1, tag2] == sorted(article.tags, key=lambda t: t.id)
 
-    @skip('Not sure how to implement this.')
+    @unittest.skip('Not sure how to implement this.')
     def test_scalar(self):
         """Tests for updating an association proxy to scalars as a list
         attribute instead of a link object.
@@ -1100,12 +1100,12 @@ class TestAssociationProxy(ManagerTestBase):
         # assert ['foo', 'bar'] == article.tag_names
         assert False, 'Not implemented'
 
-    @skip('Not sure how to implement this.')
+    @unittest.skip('Not sure how to implement this.')
     def test_dictionary_collection(self):
         """Tests for updating a dictionary based collection."""
         assert False, 'Not implemented'
 
-    @skip('Not sure how to implement this.')
+    @unittest.skip('Not sure how to implement this.')
     def test_extra_info(self):
         """Tests for adding a link in a to-many relationship with some extra
         information to be stored in the association object.
@@ -1137,7 +1137,7 @@ class TestAssociationProxy(ManagerTestBase):
         assert article.tags == [tag]
         assert self.session.query(self.ArticleTag).first().extrainfo == 'foo'
 
-    @skip('Not sure how to implement this.')
+    @unittest.skip('Not sure how to implement this.')
     def test_extra_info_patch_relationship_url(self):
         """Tests for replacing links in a to-many relationship with some extra
         information to be stored in the association object when making a
@@ -1166,7 +1166,7 @@ class TestAssociationProxy(ManagerTestBase):
         assert article.tags == [tag]
         assert self.session.query(self.ArticleTag).first().extrainfo == 'foo'
 
-    @skip('Not sure how to implement this.')
+    @unittest.skip('Not sure how to implement this.')
     def test_extra_info_post_relationship_url(self):
         """Tests for adding a link in a to-many relationship with some extra
         information to be stored in the association object when making a
@@ -1204,9 +1204,9 @@ class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSQLAlchemy, self).setup()
+        super(TestFlaskSQLAlchemy, self).setUp()
         # HACK During testing, we don't want the session to expire, so that we
         # can access attributes of model instances *after* a request has been
         # made (that is, after Flask-Restless does its work and commits the

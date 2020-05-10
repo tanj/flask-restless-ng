@@ -19,6 +19,7 @@ client.
 
 """
 import sys
+import unittest
 
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
@@ -42,7 +43,6 @@ from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import loads
 from .helpers import ManagerTestBase
-from .helpers import skip_unless
 
 
 class CoolValidationError(Exception):
@@ -63,9 +63,9 @@ class TestSimpleValidation(ManagerTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Create APIs for the validated models."""
-        super(TestSimpleValidation, self).setup()
+        super(TestSimpleValidation, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -255,8 +255,7 @@ class TestSimpleValidation(ManagerTestBase):
         assert person.articles == []
 
 
-@skip_unless(has_savalidation and sav_version >= (0, 2) and
-             sys.version < (3, 0, 0), 'savalidation not found.')
+@unittest.skipUnless(has_savalidation and sav_version >= (0, 2) and sys.version < (3, 0, 0), 'savalidation not found.')
 class TestSAValidation(ManagerTestBase):
     """Tests for validation errors raised by the ``savalidation`` package. For
     more information about this package, see `its PyPI page
@@ -264,9 +263,9 @@ class TestSAValidation(ManagerTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Create APIs for the validated models."""
-        super(TestSAValidation, self).setup()
+        super(TestSAValidation, self).setUp()
 
         class Person(self.Base, _sav.ValidationMixin):
             __tablename__ = 'person'

@@ -13,7 +13,7 @@
 
 # class TestJsonPatch(TestSupport):
 
-#     def setup(self):
+#     def setUp(self):
 #         """Creates the database, the :class:`~flask.Flask` object, the
 #         :class:`~flask_restless.manager.APIManager` for that application, and
 #         creates the ReSTful API endpoints for the :class:`testapp.Person` and
@@ -21,9 +21,9 @@
 
 #         """
 #         # create the database
-#         super(TestJsonAPI, self).setup()
+#         super(TestJsonAPI, self).setUp()
 
-#         # setup the URLs for the Person and Computer API
+#         # setUp the URLs for the Person and Computer API
 #         self.manager.create_api(self.Person, methods=['PATCH'])
 #         self.manager.create_api(self.Computer, methods=['PATCH'])
 

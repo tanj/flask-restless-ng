@@ -20,6 +20,8 @@ specification.
 
 """
 from __future__ import division
+
+import unittest
 from datetime import datetime
 
 import dateutil
@@ -36,11 +38,11 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
-from flask.ext.restless import APIManager
-from flask.ext.restless import CONTENT_TYPE
-from flask.ext.restless import DeserializationException
-from flask.ext.restless import SerializationException
-from flask.ext.restless import simple_serialize
+from flask_restless import APIManager
+from flask_restless import CONTENT_TYPE
+from flask_restless import DeserializationException
+from flask_restless import SerializationException
+from flask_restless import simple_serialize
 
 from .helpers import BetterJSONEncoder as JSONEncoder
 from .helpers import check_sole_error
@@ -50,7 +52,6 @@ from .helpers import FlaskSQLAlchemyTestBase
 from .helpers import ManagerTestBase
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
-from .helpers import skip
 
 
 def raise_s_exception(instance, *args, **kw):
@@ -77,14 +78,14 @@ def raise_d_exception(*args, **kw):
 class TestCreating(ManagerTestBase):
     """Tests for creating resources."""
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestCreating, self).setup()
+        super().setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -835,8 +836,8 @@ class TestCreating(ManagerTestBase):
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""
 
-    def setup(self):
-        super(TestProcessors, self).setup()
+    def setUp(self):
+        super(TestProcessors, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -889,14 +890,14 @@ class TestAssociationProxy(ManagerTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
-        :class:`~flask.ext.restless.manager.APIManager` for that application,
+        :class:`~flask_restless.manager.APIManager` for that application,
         and creates the ReSTful API endpoints for the models used in the test
         methods.
 
         """
-        super(TestAssociationProxy, self).setup()
+        super().setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -961,7 +962,7 @@ class TestAssociationProxy(ManagerTestBase):
         tags = article['relationships']['tags']['data']
         assert ['1', '2'] == sorted(tag['id'] for tag in tags)
 
-    @skip('Not sure how to implement this.')
+    @unittest.skip('Not sure how to implement this.')
     def test_scalar(self):
         """Tests for creating a resource with an association proxy to scalars
         as a list attribute instead of a link object.
@@ -980,7 +981,7 @@ class TestAssociationProxy(ManagerTestBase):
         # assert ['foo', 'bar'] == article['tag_names']
         assert False, 'Not implemented'
 
-    @skip('Not sure how to implement this.')
+    @unittest.skip('Not sure how to implement this.')
     def test_dictionary_collection(self):
         """Tests for creating a resource with a dictionary based collection via
         an association proxy.
@@ -995,9 +996,9 @@ class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSQLAlchemy, self).setup()
+        super(TestFlaskSQLAlchemy, self).setUp()
 
         class Person(self.db.Model):
             id = self.db.Column(self.db.Integer, primary_key=True)

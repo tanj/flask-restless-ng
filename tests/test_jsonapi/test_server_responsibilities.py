@@ -18,17 +18,17 @@ section of the JSON API specification.
 .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
 
 """
+import unittest
 from sqlalchemy import Column
 from sqlalchemy import Unicode
 from sqlalchemy import Integer
 
-from flask.ext.restless import CONTENT_TYPE
+from flask_restless import CONTENT_TYPE
 
 from ..helpers import check_sole_error
 from ..helpers import dumps
 from ..helpers import loads
 from ..helpers import ManagerTestBase
-from ..helpers import skip
 
 
 class TestServerResponsibilities(ManagerTestBase):
@@ -39,8 +39,8 @@ class TestServerResponsibilities(ManagerTestBase):
 
     """
 
-    def setup(self):
-        super(TestServerResponsibilities, self).setup()
+    def setUp(self):
+        super(TestServerResponsibilities, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -83,7 +83,7 @@ class TestServerResponsibilities(ManagerTestBase):
         response = self.app.post('/api/person', data=dumps(data))
         assert response.mimetype == CONTENT_TYPE
 
-    @skip('we currently do not support updates that have side-effects')
+    @unittest.skip('we currently do not support updates that have side-effects')
     def test_patch_content_type(self):
         """"Tests that the response for a :http:method:`patch` request
         that has side-effects has the correct content type.

@@ -10,8 +10,10 @@
 # License version 3 and under the 3-clause BSD license. For more
 # information, see LICENSE.AGPL and LICENSE.BSD.
 """Unit tests for the :mod:`flask_restless.manager` module."""
+
+import unittest
+
 from flask import Flask
-from nose.tools import raises
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
@@ -19,30 +21,29 @@ from sqlalchemy import Unicode
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
-from flask.ext.restless import APIManager
-from flask.ext.restless import collection_name
-from flask.ext.restless import IllegalArgumentError
-from flask.ext.restless import model_for
-from flask.ext.restless import serializer_for
-from flask.ext.restless import url_for
+from flask_restless import APIManager
+from flask_restless import collection_name
+from flask_restless import IllegalArgumentError
+from flask_restless import model_for
+from flask_restless import serializer_for
+from flask_restless import url_for
 
 from .helpers import FlaskSQLAlchemyTestBase
 from .helpers import force_content_type_jsonapi
 from .helpers import loads
 from .helpers import ManagerTestBase
-from .helpers import skip
 from .helpers import SQLAlchemyTestBase
 
 
 class TestLocalAPIManager(SQLAlchemyTestBase):
-    """Provides tests for :class:`flask.ext.restless.APIManager` when the tests
-    require that the instance of :class:`flask.ext.restless.APIManager` has not
+    """Provides tests for :class:`flask_restless.APIManager` when the tests
+    require that the instance of :class:`flask_restless.APIManager` has not
     yet been instantiated.
 
     """
 
-    def setup(self):
-        super(TestLocalAPIManager, self).setup()
+    def setUp(self):
+        super().setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -56,13 +57,13 @@ class TestLocalAPIManager(SQLAlchemyTestBase):
         self.Article = Article
         self.Base.metadata.create_all()
 
-    @raises(ValueError)
     def test_missing_session(self):
         """Tests that setting neither a session nor a Flask-SQLAlchemy
         object yields an error.
 
         """
-        APIManager(app=self.flaskapp)
+        with self.assertRaises(ValueError):
+            APIManager(app=self.flaskapp)
 
     def test_constructor_app(self):
         """Tests for providing a :class:`~flask.Flask` application in
@@ -266,8 +267,8 @@ class TestLocalAPIManager(SQLAlchemyTestBase):
 class TestAPIManager(ManagerTestBase):
     """Unit tests for the :class:`flask_restless.manager.APIManager` class."""
 
-    def setup(self):
-        super(TestAPIManager, self).setup()
+    def setUp(self):
+        super().setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -292,20 +293,20 @@ class TestAPIManager(ManagerTestBase):
 
     # HACK If we don't include this, there seems to be an issue with the
     # globally known APIManager objects not being cleared after every test.
-    def teardown(self):
-        """Clear the :class:`flask.ext.restless.APIManager` objects known by
+    def tearDown(self):
+        """Clear the :class:`flask_restless.APIManager` objects known by
         the global functions :data:`model_for`, :data:`url_for`, and
         :data:`collection_name`.
 
         """
-        super(TestAPIManager, self).teardown()
+        super(TestAPIManager, self).tearDown()
         model_for.created_managers.clear()
         url_for.created_managers.clear()
         collection_name.created_managers.clear()
         serializer_for.created_managers.clear()
 
     def test_url_for(self):
-        """Tests the global :func:`flask.ext.restless.url_for` function."""
+        """Tests the global :func:`flask_restless.url_for` function."""
         self.manager.create_api(self.Person, collection_name='people')
         self.manager.create_api(self.Article, collection_name='articles')
         with self.flaskapp.test_request_context():
@@ -338,32 +339,32 @@ class TestAPIManager(ManagerTestBase):
         assert author_links['self'] == (
             '/api/article/my_article/relationships/author')
 
-    @raises(ValueError)
     def test_url_for_nonexistent(self):
         """Tests that attempting to get the URL for an unknown model yields an
         error.
 
         """
-        url_for(self.Person)
+        with self.assertRaises(ValueError):
+            url_for(self.Person)
 
     def test_collection_name(self):
-        """Tests the global :func:`flask.ext.restless.collection_name`
+        """Tests the global :func:`flask_restless.collection_name`
         function.
 
         """
         self.manager.create_api(self.Person, collection_name='people')
         assert collection_name(self.Person) == 'people'
 
-    @raises(ValueError)
     def test_collection_name_nonexistent(self):
         """Tests that attempting to get the collection name for an unknown
         model yields an error.
 
         """
-        collection_name(self.Person)
+        with self.assertRaises(ValueError):
+            collection_name(self.Person)
 
     def test_serializer_for(self):
-        """Tests the global :func:`flask.ext.restless.serializer_for`
+        """Tests the global :func:`flask_restless.serializer_for`
         function.
 
         """
@@ -373,30 +374,30 @@ class TestAPIManager(ManagerTestBase):
         self.manager.create_api(self.Person, serializer=my_function)
         assert serializer_for(self.Person) == my_function
 
-    @raises(ValueError)
     def test_serializer_for_nonexistent(self):
         """Tests that attempting to get the serializer for an unknown
         model yields an error.
 
         """
-        serializer_for(self.Person)
+        with self.assertRaises(ValueError):
+            serializer_for(self.Person)
 
     def test_model_for(self):
-        """Tests the global :func:`flask.ext.restless.model_for` function."""
+        """Tests the global :func:`flask_restless.model_for` function."""
         self.manager.create_api(self.Person, collection_name='people')
         assert model_for('people') is self.Person
 
-    @raises(ValueError)
     def test_model_for_nonexistent(self):
         """Tests that attempting to get the model for a nonexistent collection
         yields an error.
 
         """
-        model_for('people')
+        with self.assertRaises(ValueError):
+            model_for('people')
 
     def test_model_for_collection_name(self):
-        """Tests that :func:`flask.ext.restless.model_for` is the inverse of
-        :func:`flask.ext.restless.collection_name`.
+        """Tests that :func:`flask_restless.model_for` is the inverse of
+        :func:`flask_restless.collection_name`.
 
         """
         self.manager.create_api(self.Person, collection_name='people')
@@ -411,21 +412,21 @@ class TestAPIManager(ManagerTestBase):
             response = func('/api/person')
             assert response.status_code == 405
 
-    @raises(IllegalArgumentError)
     def test_missing_id(self):
         """Tests that calling :meth:`APIManager.create_api` on a model without
         an ``id`` column raises an exception.
 
         """
-        self.manager.create_api(self.Tag)
+        with self.assertRaises(IllegalArgumentError):
+            self.manager.create_api(self.Tag)
 
-    @raises(IllegalArgumentError)
     def test_empty_collection_name(self):
         """Tests that calling :meth:`APIManager.create_api` with an empty
         collection name raises an exception.
 
         """
-        self.manager.create_api(self.Person, collection_name='')
+        with self.assertRaises(IllegalArgumentError):
+            self.manager.create_api(self.Person, collection_name='')
 
     def test_disallow_functions(self):
         """Tests that if the ``allow_functions`` keyword argument is ``False``,
@@ -436,31 +437,22 @@ class TestAPIManager(ManagerTestBase):
         response = self.app.get('/api/eval/person')
         assert response.status_code == 404
 
-    @skip('This test does not make sense anymore with JSON API')
-    @raises(IllegalArgumentError)
-    def test_exclude_primary_key_column(self):
-        """Tests that trying to create a writable API while excluding the
-        primary key field raises an error.
-
-        """
-        self.manager.create_api(self.Person, exclude=['id'], methods=['POST'])
-
-    @raises(IllegalArgumentError)
     def test_only_and_exclude(self):
         """Tests that attempting to use both ``only`` and ``exclude``
         keyword arguments yields an error.
 
         """
-        self.manager.create_api(self.Person, only=['id'], exclude=['name'])
+        with self.assertRaises(IllegalArgumentError):
+            self.manager.create_api(self.Person, only=['id'], exclude=['name'])
 
-    @raises(AttributeError)
     def test_additional_attributes_nonexistent(self):
         """Tests that an attempt to include an additional attribute that
         does not exist on the model raises an exception at the time of
         API creation.
 
         """
-        self.manager.create_api(self.Person, additional_attributes=['bogus'])
+        with self.assertRaises(AttributeError):
+            self.manager.create_api(self.Person, additional_attributes=['bogus'])
 
 
 class TestFSA(FlaskSQLAlchemyTestBase):
@@ -469,12 +461,12 @@ class TestFSA(FlaskSQLAlchemyTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Creates the Flask application, the APIManager, the database, and the
         Flask-SQLAlchemy models.
 
         """
-        super(TestFSA, self).setup()
+        super().setUp()
 
         class Person(self.db.Model):
             id = self.db.Column(self.db.Integer, primary_key=True)
