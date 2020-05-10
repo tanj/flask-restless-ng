@@ -71,8 +71,8 @@ def find_version(*file_path):
 
 
 setup(
-    author='Jeffrey Finkelstein',
-    author_email='jeffrey.finkelstein@gmail.com',
+    author='Maksym Revutskyi',
+    author_email='maksym.revutskyi@gmail.com',
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Web Environment',
@@ -87,23 +87,25 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Topic :: Database :: Front-Ends',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
-    description='A Flask extension for easy ReSTful API generation',
+    description='A fork of Flask-Restless with updated dependencies and bug fixes',
     download_url='https://pypi.python.org/pypi/Flask-Restless',
     install_requires=REQUIREMENTS,
     include_package_data=True,
     keywords=['ReST', 'API', 'Flask'],
     license='GNU AGPLv3+ or BSD',
     long_description=__doc__,
-    name='Flask-Restless',
+    name='Flask-Restless-NG',
     platforms='any',
     packages=find_packages(),
-    test_suite='nose.collector',
-    tests_require=['nose'],
-    url='https://github.com/jfinkels/flask-restless',
+    test_suite='tests',
+    tests_require=[],
+    url='https://github.com/mrevutskyi/flask-restless-ng',
     version=find_version('flask_restless', '__init__.py'),
     zip_safe=False
 )

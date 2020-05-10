@@ -1,6 +1,20 @@
 Changelog
 =========
 
+Changes in Flask-Restless-NG
+============================
+
+Version 0.0.1
+-------------
+
+- #692: Fixed 1.0+ compatibility
+- #665: Fix for hybrid_property
+
+
+Flask-Restless
+==============
+
+
 Here you can see the full list of changes between each Flask-Restless release.
 Version 1.0.0 saw a major overhaul of Flask-Restless to make it compliant with
 JSON API, so changes from prior versions may not be relevant to more recent

@@ -79,7 +79,7 @@ files and directory:
   models
 * `views/` - the view classes that implement the JSON API interface
 
-## Installing ##
+## Installing ##-m twine upload --repository testpypi dist/*
 
 This application can be used with any Python version that Flask supports, which
 currently includes versions 2.6, 2.7, 3.3, and 3.4. (Python 3.2 is not
@@ -124,7 +124,7 @@ Using `pip` is probably the easiest way to install this:
 
 To run the tests:
 
-    nosetests
+    python -m unittest
 
 [10]: https://nose.readthedocs.org/
 
