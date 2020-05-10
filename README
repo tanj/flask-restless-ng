@@ -2,8 +2,8 @@
 
 ## About
 
-This is a fork of no longer maintained [Flask-Restless][https://github.com/jfinkels/flask-restless] module.
-The goal of this fork is to keep it compatible with the latest version of Flask and SQLAlchemy, preformance
+This is a fork of no longer maintained [Flask-Restless](https://github.com/jfinkels/flask-restless) module.
+The goal of this fork is to keep it compatible with the latest version of Flask and SQLAlchemy, performance
 improvements and bug fixing
 
 ## Introduction ##
@@ -126,7 +126,6 @@ To run the tests:
 
     python -m unittest
 
-[10]: https://nose.readthedocs.org/
 
 ## Building documentation ##
 
@@ -178,7 +177,7 @@ contributions under both the GNU Affero General Public License, either version
 contributions under the Creative Commons Attribution-ShareAlike License version
 4.0, as described in the copyright license section above.
 
-[14]: http://github.com/jfinkels/flask-restless/issues
+[14]: http://github.com/mrevutskyi/flask-restless-ng/issues
 [15]: https://www.python.org/dev/peps/pep-0008/
 [16]: http://flake8.readthedocs.org/en/latest/
 [17]: https://help.github.com/articles/about-git-rebase/
@@ -199,4 +198,4 @@ licensed under the [Flask Artwork License][19].
 
 ## Contact ##
 
-Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
+Maksym Revutskyi <maksym.revutskyi@gmail.com>
