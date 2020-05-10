@@ -255,7 +255,7 @@ class TestSimpleValidation(ManagerTestBase):
         assert person.articles == []
 
 
-@unittest.skipUnless(has_savalidation and sav_version >= (0, 2) and sys.version < (3, 0, 0), 'savalidation not found.')
+@unittest.skipUnless(has_savalidation and sav_version >= (0, 2) and sys.version_info < (3, 0, 0), 'savalidation not found.')
 class TestSAValidation(ManagerTestBase):
     """Tests for validation errors raised by the ``savalidation`` package. For
     more information about this package, see `its PyPI page
