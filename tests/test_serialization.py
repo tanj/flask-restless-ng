@@ -21,23 +21,8 @@ testing code decoupled from the serialization implementation.
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
-from unittest2 import skipUnless
-from uuid import UUID
 from uuid import uuid1
-import warnings
 
-try:
-    # HACK The future package uses code that is pending deprecation in
-    # Python 3.4 or later. We catch the warning here so that the test
-    # suite does not complain about it.
-    with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', category=PendingDeprecationWarning)
-        from future.standard_library import install_aliases
-    install_aliases()
-except ImportError:
-    is_future_available = False
-else:
-    is_future_available = True
 from sqlalchemy import Column
 from sqlalchemy import Date
 from sqlalchemy import DateTime
@@ -51,15 +36,24 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
-from flask_restless import DefaultSerializer
-from flask_restless import MultipleExceptions
-from flask_restless import SerializationException
+from flask.ext.restless import simple_serialize
+from flask.ext.restless import SerializationException
 
 from .helpers import check_sole_error
 from .helpers import GUID
 from .helpers import loads
 from .helpers import ManagerTestBase
-from .helpers import raise_s_exception as raise_exception
+
+
+def raise_exception(instance, *args, **kw):
+    """Immediately raises a :exc:`SerializationException` with access to
+    the provided `instance` of a SQLAlchemy model.
+
+    This function is useful for use in tests for serialization
+    exceptions.
+
+    """
+    raise SerializationException(instance)
 
 
 class DecoratedDateTime(TypeDecorator):
@@ -75,8 +69,8 @@ class DecoratedInterval(TypeDecorator):
 class TestFetchCollection(ManagerTestBase):
     """Tests for serializing when fetching from a collection endpoint."""
 
-    def setUp(self):
-        super(TestFetchCollection, self).setUp()
+    def setup(self):
+        super(TestFetchCollection, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -84,99 +78,6 @@ class TestFetchCollection(ManagerTestBase):
 
         self.Person = Person
         self.Base.metadata.create_all()
-
-    def test_custom_serializer(self):
-        """Tests for a custom serializer for serializing many resources.
-
-        """
-        person1 = self.Person(id=1)
-        person2 = self.Person(id=2)
-        self.session.add_all([person1, person2])
-        self.session.commit()
-
-        class MySerializer(DefaultSerializer):
-
-            def serialize_many(self, *args, **kw):
-                result = super(MySerializer, self).serialize_many(*args, **kw)
-                for resource in result['data']:
-                    if 'attributes' not in resource:
-                        resource['attributes'] = {}
-                    resource['attributes']['foo'] = resource['id']
-                return result
-
-        self.manager.create_api(self.Person, serializer_class=MySerializer)
-
-        response = self.app.get('/api/person')
-        document = loads(response.data)
-        people = document['data']
-        attributes = sorted(person['attributes']['foo'] for person in people)
-        assert ['1', '2'] == attributes
-
-    def test_multiple_exceptions(self):
-        """Tests that multiple exceptions are caught when serializing
-        many instances.
-
-        """
-        person1 = self.Person(id=1)
-        person2 = self.Person(id=2)
-        self.session.add_all([person1, person2])
-        self.session.commit()
-
-        class raise_exceptions(DefaultSerializer):
-
-            def serialize_many(self, instances, *args, **kw):
-                instance1, instance2 = instances[:2]
-                exception1 = SerializationException(instance1, message='foo')
-                exception2 = SerializationException(instance2, message='bar')
-                exceptions = [exception1, exception2]
-                raise MultipleExceptions(exceptions)
-
-        self.manager.create_api(self.Person, serializer_class=raise_exceptions)
-
-        response = self.app.get('/api/person')
-        document = loads(response.data)
-        assert response.status_code == 500
-        errors = document['errors']
-        assert len(errors) == 2
-        error1, error2 = errors
-        detail1 = error1['detail']
-        assert 'foo' in detail1
-        detail2 = error2['detail']
-        assert 'bar' in detail2
-
-    def test_multiple_exceptions_from_dump(self):
-        """Tests that multiple exceptions are caught from the
-        :meth:`DefaultSerializer._dump` method when serializing many
-        instances.
-
-        """
-        person1 = self.Person(id=1)
-        person2 = self.Person(id=2)
-        self.session.add_all([person1, person2])
-        self.session.commit()
-
-        class raise_exceptions(DefaultSerializer):
-
-            def _dump(self, instance, *args, **kw):
-                message = 'failed on {0}'.format(instance.id)
-                raise SerializationException(instance, message=message)
-
-        self.manager.create_api(self.Person, serializer_class=raise_exceptions)
-
-        response = self.app.get('/api/person')
-        document = loads(response.data)
-        assert response.status_code == 500
-        errors = document['errors']
-        assert len(errors) == 2
-        error1, error2 = errors
-        detail1 = error1['detail']
-        detail2 = error2['detail']
-        # There is no guarantee on the order in which the error objects
-        # are supplied in the response, so we check which is which.
-        if '1' not in detail1:
-            detail1, detail2 = detail2, detail1
-        assert u'failed on 1' in detail1
-        assert u'failed on 2' in detail2
 
     def test_exception_single(self):
         """Tests for a serialization exception on a filtered single
@@ -187,7 +88,7 @@ class TestFetchCollection(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
 
-        self.manager.create_api(self.Person, serializer_class=raise_exception)
+        self.manager.create_api(self.Person, serializer=raise_exception)
 
         query_string = {'filter[single]': 1}
         response = self.app.get('/api/person', query_string=query_string)
@@ -198,8 +99,8 @@ class TestFetchCollection(ManagerTestBase):
 class TestFetchResource(ManagerTestBase):
     """Tests for serializing when fetching from a resource endpoint."""
 
-    def setUp(self):
-        super(TestFetchResource, self).setUp()
+    def setup(self):
+        super(TestFetchResource, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -220,10 +121,6 @@ class TestFetchResource(ManagerTestBase):
             decorated_datetime = Column(DecoratedDateTime)
             decorated_interval = Column(DecoratedInterval)
 
-            # These class attributes are *not* columns, just hard-coded values.
-            uuid_attribute = UUID(hex='f' * 32)
-            datetime_attribute = datetime(1, 1, 1)
-
             @hybrid_property
             def has_early_bedtime(self):
                 if not hasattr(self, 'bedtime') or self.bedtime is None:
@@ -239,14 +136,9 @@ class TestFetchResource(ManagerTestBase):
             article_id = Column(Integer, ForeignKey('article.id'))
             article = relationship('Article', backref=backref('comments'))
 
-        class Tag(self.Base):
-            __tablename__ = 'tag'
-            tagid = Column(Integer, primary_key=True)
-
         self.Article = Article
         self.Comment = Comment
         self.Person = Person
-        self.Tag = Tag
         self.Base.metadata.create_all()
 
     def test_hybrid_property(self):
@@ -278,22 +170,6 @@ class TestFetchResource(ManagerTestBase):
         person = document['data']
         assert person['attributes']['uuid'] == str(uuid)
 
-    def test_uuid_as_additional_attribute(self):
-        """Tests that a UUID is serialized as a string when it is an
-        attribute of the model but *not* a SQLAlchemy column.
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-        self.manager.create_api(self.Person,
-                                additional_attributes=['uuid_attribute'])
-        response = self.app.get('/api/person/1')
-        document = loads(response.data)
-        person = document['data']
-        attributes = person['attributes']
-        assert attributes['uuid_attribute'] == str(self.Person.uuid_attribute)
-
     def test_time(self):
         """Test for getting the JSON representation of a time field."""
         now = datetime.now().time()
@@ -319,23 +195,6 @@ class TestFetchResource(ManagerTestBase):
         document = loads(response.data)
         person = document['data']
         assert person['attributes']['birth_datetime'] == now.isoformat()
-
-    def test_datetime_as_additional_attribute(self):
-        """Tests that a datetime is serialized as a string when it is an
-        attribute of the model but *not* a SQLAlchemy column.
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-        self.manager.create_api(self.Person,
-                                additional_attributes=['datetime_attribute'])
-        response = self.app.get('/api/person/1')
-        document = loads(response.data)
-        person = document['data']
-        attributes = person['attributes']
-        expected = self.Person.datetime_attribute
-        assert attributes['datetime_attribute'] == expected.isoformat()
 
     def test_date(self):
         """Test for getting the JSON representation of a date field."""
@@ -383,20 +242,18 @@ class TestFetchResource(ManagerTestBase):
         person = document['data']
         assert person['attributes']['decorated_interval'] == 10
 
-    def test_custom_serialize(self):
+    def test_custom_function(self):
         """Tests for a custom serialization function."""
         person = self.Person(id=1)
         self.session.add(person)
         self.session.commit()
 
-        class MySerializer(DefaultSerializer):
+        def serializer(instance, **kw):
+            result = simple_serialize(instance, **kw)
+            result['attributes']['foo'] = 'bar'
+            return result
 
-            def serialize(self, *args, **kw):
-                result = super(MySerializer, self).serialize(*args, **kw)
-                result['data']['attributes']['foo'] = 'bar'
-                return result
-
-        self.manager.create_api(self.Person, serializer_class=MySerializer)
+        self.manager.create_api(self.Person, serializer=serializer)
         response = self.app.get('/api/person/1')
         document = loads(response.data)
         person = document['data']
@@ -415,25 +272,22 @@ class TestFetchResource(ManagerTestBase):
         self.session.add_all([person, article])
         self.session.commit()
 
-        class MySerializer(DefaultSerializer):
+        def add_foo(instance, *args, **kw):
+            result = simple_serialize(instance, *args, **kw)
+            if 'attributes' not in result:
+                result['attributes'] = {}
+            result['attributes']['foo'] = 'foo'
+            return result
 
-            secret = None
+        def add_bar(instance, *args, **kw):
+            result = simple_serialize(instance, *args, **kw)
+            if 'attributes' not in result:
+                result['attributes'] = {}
+            result['attributes']['bar'] = 'bar'
+            return result
 
-            def serialize(self, *args, **kw):
-                result = super(MySerializer, self).serialize(*args, **kw)
-                if 'attributes' not in result['data']:
-                    result['data']['attributes'] = {}
-                result['data']['attributes'][self.secret] = self.secret
-                return result
-
-        class FooSerializer(MySerializer):
-            secret = 'foo'
-
-        class BarSerializer(MySerializer):
-            secret = 'bar'
-
-        self.manager.create_api(self.Person, serializer_class=FooSerializer)
-        self.manager.create_api(self.Article, serializer_class=BarSerializer)
+        self.manager.create_api(self.Person, serializer=add_foo)
+        self.manager.create_api(self.Article, serializer=add_bar)
 
         query_string = {'include': 'author'}
         response = self.app.get('/api/article/1', query_string=query_string)
@@ -459,7 +313,7 @@ class TestFetchResource(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
 
-        self.manager.create_api(self.Person, serializer_class=raise_exception)
+        self.manager.create_api(self.Person, serializer=raise_exception)
 
         response = self.app.get('/api/person/1')
         check_sole_error(response, 500, ['Failed to serialize', 'type',
@@ -477,7 +331,7 @@ class TestFetchResource(ManagerTestBase):
         self.session.commit()
 
         self.manager.create_api(self.Person)
-        self.manager.create_api(self.Article, serializer_class=raise_exception)
+        self.manager.create_api(self.Article, serializer=raise_exception)
 
         query_string = {'include': 'articles'}
         response = self.app.get('/api/person/1', query_string=query_string)
@@ -500,7 +354,7 @@ class TestFetchResource(ManagerTestBase):
         self.session.commit()
 
         self.manager.create_api(self.Article)
-        self.manager.create_api(self.Person, serializer_class=raise_exception)
+        self.manager.create_api(self.Person, serializer=raise_exception)
 
         query_string = {'include': 'author'}
         response = self.app.get('/api/article', query_string=query_string)
@@ -558,7 +412,7 @@ class TestFetchResource(ManagerTestBase):
 
     def test_exception_message(self):
         """Tests that a message specified in the
-        :exc:`~flask_restless.SerializationException` constructor
+        :exc:`~flask.ext.restless.SerializationException` constructor
         appears in an error response.
 
         """
@@ -566,53 +420,19 @@ class TestFetchResource(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
 
-        class raise_with_msg(DefaultSerializer):
+        def raise_with_msg(instance, *args, **kw):
+            raise SerializationException(instance, message='foo')
 
-            def serialize(self, instance, *args, **kw):
-                raise SerializationException(instance, message='foo')
-
-        self.manager.create_api(self.Person, serializer_class=raise_with_msg)
+        self.manager.create_api(self.Person, serializer=raise_with_msg)
 
         response = self.app.get('/api/person/1')
         check_sole_error(response, 500, ['foo'])
 
-    def test_non_id_primary_key(self):
-        """Test for a primary key field that is not named "id".
-
-        For more information, see issue #540.
-
-        """
-        tag = self.Tag(tagid=1)
-        self.session.add(tag)
-        self.session.commit()
-        self.manager.create_api(self.Tag)
-        response = self.app.get('/api/tag/1')
-        document = loads(response.data)
-        tag = document['data']
-        self.assertEqual(tag['id'], '1')
-        self.assertEqual(tag['type'], 'tag')
-        self.assertEqual(tag['attributes']['tagid'], 1)
-
-    @skipUnless(is_future_available, 'required "future" library')
-    def test_unicode_self_link(self):
-        """Test that serializing the "self" link handles unicode on Python 2.
-
-        This is a specific test for code using the :mod:`future` library.
-
-        For more information, see GitHub issue #594.
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-        self.manager.create_api(self.Person)
-        self.app.get('/api/person/1')
-
 
 class TestFetchRelation(ManagerTestBase):
 
-    def setUp(self):
-        super(TestFetchRelation, self).setUp()
+    def setup(self):
+        super(TestFetchRelation, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -632,7 +452,7 @@ class TestFetchRelation(ManagerTestBase):
 
     def test_exception_to_many(self):
         """Tests that exceptions are caught when a custom serialization method
-        raises an exception on a to-many relation.
+        raises an exception on a to-one relation.
 
         """
         person = self.Person(id=1)
@@ -642,7 +462,7 @@ class TestFetchRelation(ManagerTestBase):
         self.session.commit()
 
         self.manager.create_api(self.Person)
-        self.manager.create_api(self.Article, serializer_class=raise_exception)
+        self.manager.create_api(self.Article, serializer=raise_exception)
 
         response = self.app.get('/api/person/1/articles')
         check_sole_error(response, 500, ['Failed to serialize', 'type',
@@ -659,7 +479,7 @@ class TestFetchRelation(ManagerTestBase):
         self.session.add_all([person, article])
         self.session.commit()
 
-        self.manager.create_api(self.Person, serializer_class=raise_exception)
+        self.manager.create_api(self.Person, serializer=raise_exception)
         self.manager.create_api(self.Article)
 
         response = self.app.get('/api/article/1/author')
@@ -677,7 +497,7 @@ class TestFetchRelation(ManagerTestBase):
         self.session.add_all([article, person])
         self.session.commit()
 
-        self.manager.create_api(self.Person, serializer_class=raise_exception)
+        self.manager.create_api(self.Person, serializer=raise_exception)
         self.manager.create_api(self.Article)
 
         params = {'include': 'author'}
@@ -691,8 +511,8 @@ class TestFetchRelation(ManagerTestBase):
 class TestFetchRelatedResource(ManagerTestBase):
     """Tests for serializing when fetching from a related resource endpoint."""
 
-    def setUp(self):
-        super(TestFetchRelatedResource, self).setUp()
+    def setup(self):
+        super(TestFetchRelatedResource, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -720,7 +540,7 @@ class TestFetchRelatedResource(ManagerTestBase):
         self.session.commit()
 
         self.manager.create_api(self.Person)
-        self.manager.create_api(self.Article, serializer_class=raise_exception)
+        self.manager.create_api(self.Article, serializer=raise_exception)
 
         response = self.app.get('/api/person/1/articles/1')
         check_sole_error(response, 500, ['Failed to serialize', 'type',
@@ -737,7 +557,7 @@ class TestFetchRelatedResource(ManagerTestBase):
         self.session.add_all([article, person])
         self.session.commit()
 
-        self.manager.create_api(self.Person, serializer_class=raise_exception)
+        self.manager.create_api(self.Person, serializer=raise_exception)
         self.manager.create_api(self.Article)
 
         query_string = {'include': 'author'}

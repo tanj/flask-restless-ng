@@ -31,7 +31,7 @@ class TestDeletingResources(ManagerTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
@@ -39,7 +39,7 @@ class TestDeletingResources(ManagerTestBase):
 
         """
         # create the database
-        super(TestDeletingResources, self).setUp()
+        super(TestDeletingResources, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -72,8 +72,7 @@ class TestDeletingResources(ManagerTestBase):
         For more information, see the `404 Not Found`_ section of the JSON API
         specification.
 
-        .. _404 Not Found:
-           http://jsonapi.org/format/#crud-deleting-responses-404
+        .. _404 Not Found: http://jsonapi.org/format/#crud-deleting-responses-404
 
         """
         response = self.app.delete('/api/person/1')

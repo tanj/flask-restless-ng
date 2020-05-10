@@ -15,21 +15,21 @@ from datetime import datetime
 from datetime import time
 from datetime import timedelta
 from functools import wraps
+from json import JSONEncoder
 import sys
 import types
-from unittest2 import skipUnless as skip_unless
-from unittest2 import TestCase
 import uuid
 
 from flask import Flask
 from flask import json
 try:
-    import flask_sqlalchemy
-    from flask_sqlalchemy import SQLAlchemy
+    from flask.ext import sqlalchemy as flask_sqlalchemy
+    from flask.ext.sqlalchemy import SQLAlchemy
 except ImportError:
     has_flask_sqlalchemy = False
 else:
     has_flask_sqlalchemy = True
+from nose import SkipTest
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy.dialects.postgresql import UUID
@@ -40,31 +40,20 @@ from sqlalchemy.orm.session import Session as SessionBase
 from sqlalchemy.types import CHAR
 from sqlalchemy.types import TypeDecorator
 
-from flask_restless import APIManager
-from flask_restless import collection_name
-from flask_restless import DefaultSerializer
-from flask_restless import DefaultDeserializer
-from flask_restless import DeserializationException
-from flask_restless import JSONAPI_MIMETYPE
-from flask_restless import model_for
-from flask_restless import primary_key_for
-from flask_restless import SerializationException
-from flask_restless import serializer_for
-from flask_restless import url_for
+from flask.ext.restless import APIManager
+from flask.ext.restless import CONTENT_TYPE
 
 dumps = json.dumps
 loads = json.loads
 
 #: The User-Agent string for Microsoft Internet Explorer 8.
 #:
-#: From <http://blogs.msdn.com/b/ie/archive/2008/02/21/
-#:       the-internet-explorer-8-user-agent-string.aspx>.
+#: From <http://blogs.msdn.com/b/ie/archive/2008/02/21/the-internet-explorer-8-user-agent-string.aspx>.
 MSIE8_UA = 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.0; Trident/4.0)'
 
 #: The User-Agent string for Microsoft Internet Explorer 9.
 #:
-#: From <http://blogs.msdn.com/b/ie/archive/2010/03/23/
-#:       introducing-ie9-s-user-agent-string.aspx>.
+#: From <http://blogs.msdn.com/b/ie/archive/2010/03/23/introducing-ie9-s-user-agent-string.aspx>.
 MSIE9_UA = 'Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0)'
 
 #: Boolean representing whether this code is being executed on Python 2.
@@ -73,51 +62,6 @@ IS_PYTHON2 = (sys.version_info[0] == 2)
 #: Tuple of objects representing types.
 CLASS_TYPES = (types.TypeType, types.ClassType) if IS_PYTHON2 else (type, )
 
-#: Global helper functions used by Flask-Restless
-GLOBAL_FUNCS = [model_for, url_for, collection_name, serializer_for,
-                primary_key_for]
-
-
-class raise_s_exception(DefaultSerializer):
-    """A serializer that unconditionally raises an exception when
-    either :meth:`.serialize` or :meth:`.serialize_many` is called.
-
-    This class is useful for tests of serialization exceptions.
-
-    """
-
-    def serialize(self, instance, *args, **kw):
-        """Immediately raises a :exc:`SerializationException` with
-        access to the provided `instance` of a SQLAlchemy model.
-
-        """
-        raise SerializationException(instance)
-
-    def serialize_many(self, instances, *args, **kw):
-        """Immediately raises a :exc:`SerializationException`.
-
-        This function requires `instances` to be non-empty.
-
-        """
-        raise SerializationException(instances[0])
-
-
-class raise_d_exception(DefaultDeserializer):
-    """A deserializer that unconditionally raises an exception when
-    either :meth:`.deserialize` or :meth:`.deserialize_many` is called.
-
-    This class is useful for tests of deserialization exceptions.
-
-    """
-
-    def deserialize(self, *args, **kw):
-        """Immediately raises a :exc:`DeserializationException`."""
-        raise DeserializationException
-
-    def deserialize_many(self, *args, **kw):
-        """Immediately raises a :exc:`DeserializationException`."""
-        raise DeserializationException
-
 
 def isclass(obj):
     """Returns ``True`` if and only if the specified object is a type (or a
@@ -125,6 +69,60 @@ def isclass(obj):
 
     """
     return isinstance(obj, CLASS_TYPES)
+
+
+def skip_unless(condition, reason=None):
+    """Decorator that skips `test` unless `condition` is ``True``.
+
+    This is a replacement for :func:`unittest.skipUnless` that works with
+    ``nose``. The argument ``reason`` is a string describing why the test was
+    skipped.
+
+    This decorator can be applied to functions, methods, or classes.
+
+    """
+
+    def decorated(test):
+        """Returns a decorated version of ``test``, as described in the
+        wrapper defined within.
+
+        """
+        message = 'Skipped {0}: {1}'.format(test.__name__, reason)
+
+        # HACK-ish: If the test is actually a test class, override the
+        # setup method so that the only thing it does is raise
+        # `SkipTest`. Thus whenever setup() is called, the test that
+        # would have been run is skipped.
+        if isclass(test):
+            if not condition:
+                def new_setup(self):
+                    raise SkipTest(message)
+
+                test.setup = new_setup
+            return test
+
+        @wraps(test)
+        def inner(*args, **kw):
+            """Checks that ``condition`` is ``True`` before executing
+            ``test(*args, **kw)``.
+
+            """
+            if not condition:
+                raise SkipTest(message)
+            return test(*args, **kw)
+
+        return inner
+
+    return decorated
+
+
+def skip(reason=None):
+    """Unconditionally skip a test.
+
+    This is a convenience function for ``skip_unless(False, reason)``.
+
+    """
+    return skip_unless(False, reason)
 
 
 def parse_version(version_string):
@@ -214,7 +212,7 @@ def force_content_type_jsonapi(test_client):
                 kw['headers'] = dict()
             headers = kw['headers']
             if 'content_type' not in kw and 'Content-Type' not in headers:
-                kw['content_type'] = JSONAPI_MIMETYPE
+                kw['content_type'] = CONTENT_TYPE
             return func(*args, **kw)
         return new_func
 
@@ -254,11 +252,11 @@ class GUID(TypeDecorator):
         return uuid.UUID(value)
 
 
-# In versions of Flask before 0.11, datetime and time objects are not
+# In versions of Flask before 1.0, datetime and time objects are not
 # serializable by default so we need to create a custom JSON encoder class.
 #
-# TODO When Flask 0.11 is required, remove this.
-class BetterJSONEncoder(json.JSONEncoder):
+# TODO When Flask 1.0 is required, remove this.
+class BetterJSONEncoder(JSONEncoder):
     """Extends the default JSON encoder to serialize objects from the
     :mod:`datetime` module.
 
@@ -272,7 +270,7 @@ class BetterJSONEncoder(json.JSONEncoder):
         return super(BetterJSONEncoder, self).default(obj)
 
 
-class FlaskTestBase(TestCase):
+class FlaskTestBase(object):
     """Base class for tests which use a Flask application.
 
     The Flask test client can be accessed at ``self.app``. The Flask
@@ -280,15 +278,15 @@ class FlaskTestBase(TestCase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the Flask application and the APIManager."""
         # create the Flask application
         app = Flask(__name__)
         app.config['DEBUG'] = True
         app.config['TESTING'] = True
-        # The SERVER_NAME is required by `manager.url_for()` in order to
-        # construct absolute URLs.
-        app.config['SERVER_NAME'] = 'localhost:5000'
+        # This is required by `manager.url_for()` in order to construct
+        # absolute URLs.
+        app.config['SERVER_NAME'] = 'localhost'
         app.logger.disabled = True
         self.flaskapp = app
 
@@ -318,21 +316,20 @@ class DatabaseMixin(object):
         return 'sqlite://'
 
 
-@skip_unless(has_flask_sqlalchemy, 'Flask-SQLAlchemy not found')
 class FlaskSQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
     """Base class for tests that use Flask-SQLAlchemy (instead of plain
     old SQLAlchemy).
 
-    If Flask-SQLAlchemy is not installed, the :meth:`.setUp` method will
+    If Flask-SQLAlchemy is not installed, the :meth:`.setup` method will
     raise :exc:`nose.SkipTest`, so that each test method will be
     skipped individually.
 
     """
 
-    def setUp(self):
-        super(FlaskSQLAlchemyTestBase, self).setUp()
-        # if not has_flask_sqlalchemy:
-        #     raise SkipTest('Flask-SQLAlchemy not found.')
+    def setup(self):
+        super(FlaskSQLAlchemyTestBase, self).setup()
+        if not has_flask_sqlalchemy:
+            raise SkipTest('Flask-SQLAlchemy not found.')
         self.flaskapp.config['SQLALCHEMY_DATABASE_URI'] = self.database_uri()
         # This is to avoid a warning in earlier versions of
         # Flask-SQLAlchemy.
@@ -342,7 +339,7 @@ class FlaskSQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
         self.db = SQLAlchemy(self.flaskapp)
         self.session = self.db.session
 
-    def tearDown(self):
+    def teardown(self):
         """Drops all tables and unregisters Flask-SQLAlchemy session
         signals.
 
@@ -354,7 +351,7 @@ class FlaskSQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
 class SQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
     """Base class for tests that use a SQLAlchemy database.
 
-    The :meth:`setUp` method does the necessary SQLAlchemy
+    The :meth:`setup` method does the necessary SQLAlchemy
     initialization, and the subclasses should populate the database with
     models and then create the database (by calling
     ``self.Base.metadata.create_all()``).
@@ -365,12 +362,12 @@ class SQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Initializes the components necessary for models in a SQLAlchemy
         database.
 
         """
-        super(SQLAlchemyTestBase, self).setUp()
+        super(SQLAlchemyTestBase, self).setup()
         engine = create_engine(self.database_uri(), convert_unicode=True)
         self.Session = sessionmaker(autocommit=False, autoflush=False,
                                     bind=engine)
@@ -378,7 +375,7 @@ class SQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
         self.Base = declarative_base()
         self.Base.metadata.bind = engine
 
-    def tearDown(self):
+    def teardown(self):
         """Drops all tables from the temporary database."""
         self.session.remove()
         self.Base.metadata.drop_all()
@@ -386,36 +383,24 @@ class SQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
 
 class ManagerTestBase(SQLAlchemyTestBase):
     """Base class for tests that use a SQLAlchemy database and an
-    :class:`~flask_restless.APIManager`.
+    :class:`~flask.ext.restless.APIManager`.
 
     Nearly all test classes should subclass this class. Since we strive
     to make Flask-Restless compliant with plain old SQLAlchemy first,
     the default database abstraction layer used by tests in this class
     will be SQLAlchemy. Test classes requiring Flask-SQLAlchemy must
-    instantiate their own :class:`~flask_restless.APIManager`.
+    instantiate their own :class:`~flask.ext.restless.APIManager`.
 
-    The :class:`~flask_restless.APIManager` instance for use in
+    The :class:`~flask.ext.restless.APIManager` instance for use in
     tests is accessible at ``self.manager``.
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Initializes an instance of
-        :class:`~flask_restless.APIManager` with a SQLAlchemy
+        :class:`~flask.ext.restless.APIManager` with a SQLAlchemy
         session.
 
         """
-        super(ManagerTestBase, self).setUp()
+        super(ManagerTestBase, self).setup()
         self.manager = APIManager(self.flaskapp, session=self.session)
-
-    # HACK If we don't include this, there seems to be an issue with the
-    # globally known APIManager objects not being cleared after every test.
-    def tearDown(self):
-        """Clear the :class:`~flask_restless.APIManager` objects
-        known by the global helper functions :data:`model_for`,
-        :data:`url_for`, etc.
-
-        """
-        super(ManagerTestBase, self).tearDown()
-        for func in GLOBAL_FUNCS:
-            func.created_managers.clear()

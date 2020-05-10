@@ -1,3 +1,5 @@
+.. _deleting:
+
 Deleting resources
 ==================
 
@@ -5,8 +7,8 @@ For the purposes of concreteness in this section, suppose we have executed the
 following code on the server::
 
     from flask import Flask
-    from flask_sqlalchemy import SQLAlchemy
-    from flask_restless import APIManager
+    from flask.ext.sqlalchemy import SQLAlchemy
+    from flask.ext.restless import APIManager
 
     app = Flask(__name__)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
@@ -17,7 +19,7 @@ following code on the server::
 
     db.create_all()
     manager = APIManager(app, flask_sqlalchemy_db=db)
-    manager.create_api(Person, methods=['DELETE'])
+    manager.create_api(Person, method=['DELETE'])
 
 To delete a resource, the request
 

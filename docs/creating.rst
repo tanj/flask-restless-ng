@@ -7,8 +7,8 @@ For the purposes of concreteness in this section, suppose we have executed the
 following code on the server::
 
     from flask import Flask
-    from flask_sqlalchemy import SQLAlchemy
-    from flask_restless import APIManager
+    from flask.ext.sqlalchemy import SQLAlchemy
+    from flask.ext.restless import APIManager
 
     app = Flask(__name__)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
@@ -55,7 +55,7 @@ yields the response
        },
        "id": "1",
        "jsonapi": {
-         "version": "1.0"
+         {"version": "1.0"}
        },
        "links": {
          "self": "http://example.com/api/person/bd34b544-ad39-11e5-a2aa-4cbb58b9ee34"
@@ -66,7 +66,7 @@ yields the response
    }
 
 To create a new resource with a client-generated ID (if enabled by setting
-``allow_client_generated_ids`` to ``True`` in :meth:`.APIManager.create_api`),
+``allow_client_generated_ids`` to ``True`` in :meth:`APIManager.create_api`),
 the request
 
 .. sourcecode:: http
@@ -105,7 +105,7 @@ yields the response
        },
        "meta": {},
        "jsonapi": {
-         "version": "1.0"
+         {"version": "1.0"}
        },
        "type": "person"
      }

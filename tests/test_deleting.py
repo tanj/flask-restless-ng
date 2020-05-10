@@ -18,16 +18,14 @@ Flask-Restless meets the minimum requirements of the JSON API
 specification.
 
 """
-from unittest2 import skip
-
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Unicode
 from sqlalchemy.orm import relationship
 
-from flask_restless import APIManager
-from flask_restless import ProcessingException
+from flask.ext.restless import APIManager
+from flask.ext.restless import ProcessingException
 
 from .helpers import dumps
 from .helpers import loads
@@ -35,19 +33,20 @@ from .helpers import FlaskSQLAlchemyTestBase
 from .helpers import ManagerTestBase
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
+from .helpers import skip
 
 
 class TestDeleting(ManagerTestBase):
     """Tests for deleting resources."""
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestDeleting, self).setUp()
+        super(TestDeleting, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -174,8 +173,8 @@ class TestDeleting(ManagerTestBase):
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""
 
-    def setUp(self):
-        super(TestProcessors, self).setUp()
+    def setup(self):
+        super(TestProcessors, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -266,31 +265,6 @@ class TestProcessors(ManagerTestBase):
         response = self.app.delete('/api/person/1')
         assert response.status_code == 204
 
-    def test_postprocessor_no_commit_on_error(self):
-        """Tests that a processing exception causes the session to be
-        flushed but not committed.
-
-        """
-
-        def raise_error(**kw):
-            raise ProcessingException(status=500)
-
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-
-        postprocessors = dict(DELETE_RESOURCE=[raise_error])
-        self.manager.create_api(self.Person, methods=['DELETE'],
-                                postprocessors=postprocessors)
-        response = self.app.delete('/api/person/1')
-
-        assert response.status_code == 500
-        people = self.session.query(self.Person).all()
-        assert people == []
-        self.session.rollback()
-        people = self.session.query(self.Person).all()
-        assert people == [person]
-
 
 class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
     """Tests for deleting resources defined as Flask-SQLAlchemy models instead
@@ -298,9 +272,9 @@ class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSQLAlchemy, self).setUp()
+        super(TestFlaskSQLAlchemy, self).setup()
 
         class Person(self.db.Model):
             id = self.db.Column(self.db.Integer, primary_key=True)

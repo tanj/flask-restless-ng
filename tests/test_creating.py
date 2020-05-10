@@ -31,14 +31,16 @@ from sqlalchemy import Integer
 from sqlalchemy import Interval
 from sqlalchemy import Time
 from sqlalchemy import Unicode
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
-from flask_restless import APIManager
-from flask_restless import JSONAPI_MIMETYPE
-from flask_restless import DefaultDeserializer
-from flask_restless import DefaultSerializer
-from flask_restless import ProcessingException
+from flask.ext.restless import APIManager
+from flask.ext.restless import CONTENT_TYPE
+from flask.ext.restless import DeserializationException
+from flask.ext.restless import SerializationException
+from flask.ext.restless import simple_serialize
 
 from .helpers import BetterJSONEncoder as JSONEncoder
 from .helpers import check_sole_error
@@ -48,21 +50,41 @@ from .helpers import FlaskSQLAlchemyTestBase
 from .helpers import ManagerTestBase
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
-from .helpers import raise_s_exception
-from .helpers import raise_d_exception
+from .helpers import skip
+
+
+def raise_s_exception(instance, *args, **kw):
+    """Immediately raises a :exc:`SerializationException` with access to
+    the provided `instance` of a SQLAlchemy model.
+
+    This function is useful for use in tests for serialization
+    exceptions.
+
+    """
+    raise SerializationException(instance)
+
+
+def raise_d_exception(*args, **kw):
+    """Immediately raises a :exc:`DeserializationException`.
+
+    This function is useful for use in tests for deserialization
+    exceptions.
+
+    """
+    raise DeserializationException()
 
 
 class TestCreating(ManagerTestBase):
     """Tests for creating resources."""
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestCreating, self).setUp()
+        super(TestCreating, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -70,7 +92,6 @@ class TestCreating(ManagerTestBase):
             date_created = Column(Date)
             author_id = Column(Integer, ForeignKey('person.id'))
             author = relationship('Person')
-            type = Column(Unicode)
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -198,9 +219,9 @@ class TestCreating(ManagerTestBase):
         """
         data = dict(data=dict(type='person'))
         response = self.app.post('/api/person', data=dumps(data),
-                                 content_type=JSONAPI_MIMETYPE)
+                                 content_type=CONTENT_TYPE)
         assert response.status_code == 201
-        assert response.headers['Content-Type'] == JSONAPI_MIMETYPE
+        assert response.headers['Content-Type'] == CONTENT_TYPE
 
     def test_no_content_type(self):
         """Tests that the server responds with :http:status:`415` if the
@@ -211,7 +232,7 @@ class TestCreating(ManagerTestBase):
         response = self.app.post('/api/person', data=dumps(data),
                                  content_type=None)
         assert response.status_code == 415
-        assert response.headers['Content-Type'] == JSONAPI_MIMETYPE
+        assert response.headers['Content-Type'] == CONTENT_TYPE
 
     def test_msie8(self):
         """Tests for compatibility with Microsoft Internet Explorer 8.
@@ -528,27 +549,23 @@ class TestCreating(ManagerTestBase):
         """Tests for custom deserialization."""
         temp = []
 
-        class MySerializer(DefaultSerializer):
+        def serializer(instance, *args, **kw):
+            result = simple_serialize(instance)
+            result['attributes']['foo'] = temp.pop()
+            return result
 
-            def serialize(self, *args, **kw):
-                result = super(MySerializer, self).serialize(*args, **kw)
-                result['data']['attributes']['foo'] = temp.pop()
-                return result
-
-        class MyDeserializer(DefaultDeserializer):
-
-            def deserialize(self, document, *args, **kw):
-                # Remove the extra 'foo' attribute and stash it in the
-                # `temp` list.
-                temp.append(document['data']['attributes'].pop('foo'))
-                super_deserialize = super(MyDeserializer, self).deserialize
-                return super_deserialize(document, *args, **kw)
+        def deserializer(document, *args, **kw):
+            # Move the attributes up to the top-level object.
+            data = document['data']['attributes']
+            temp.append(data.pop('foo'))
+            instance = self.Person(**data)
+            return instance
 
         # POST will deserialize once and serialize once
         self.manager.create_api(self.Person, methods=['POST'],
                                 url_prefix='/api2',
-                                serializer_class=MySerializer,
-                                deserializer_class=MyDeserializer)
+                                serializer=serializer,
+                                deserializer=deserializer)
         data = dict(data=dict(type='person', attributes=dict(foo='bar')))
         response = self.app.post('/api2/person', data=dumps(data))
         assert response.status_code == 201
@@ -566,8 +583,7 @@ class TestCreating(ManagerTestBase):
         self.session.commit()
         self.manager.create_api(self.Article, methods=['POST'],
                                 url_prefix='/api2')
-        self.manager.create_api(self.Person,
-                                serializer_class=raise_s_exception)
+        self.manager.create_api(self.Person, serializer=raise_s_exception)
         data = {
             'data': {
                 'type': 'article',
@@ -595,24 +611,24 @@ class TestCreating(ManagerTestBase):
         """
         self.manager.create_api(self.Person, methods=['POST'],
                                 url_prefix='/api2',
-                                deserializer_class=raise_d_exception)
+                                deserializer=raise_d_exception)
         data = dict(data=dict(type='person'))
         response = self.app.post('/api2/person', data=dumps(data))
         assert response.status_code == 400
         # TODO check error message here
 
     def test_serialization_exception(self):
-        """Tests that exceptions are caught when a custom serialization
-        method raises an exception.
+        """Tests that exceptions are caught when a custom serialization method
+        raises an exception.
 
         """
         self.manager.create_api(self.Person, methods=['POST'],
                                 url_prefix='/api2',
-                                serializer_class=raise_s_exception)
+                                serializer=raise_s_exception)
         data = dict(data=dict(type='person'))
         response = self.app.post('/api2/person', data=dumps(data))
-        check_sole_error(response, 500, ['Failed to serialize', 'type',
-                                         'person', 'ID', '1'])
+        assert response.status_code == 400
+        # TODO check error message here
 
     def test_to_one_related_resource_url(self):
         """Tests that attempting to add to a to-one related resource URL
@@ -651,30 +667,6 @@ class TestCreating(ManagerTestBase):
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 400
         keywords = ['deserialize', 'missing', '"data"', 'element']
-        check_sole_error(response, 400, keywords)
-
-    def test_to_one_relationship_missing_data(self):
-        """Tests that the server rejects a request to create a resource
-        with a to-one relationship when the relationship object is
-        missing a ``data`` element.
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-        data = {
-            'data': {
-                'type': 'article',
-                'relationships': {
-                    'author': {
-                        'type': 'person'
-                    }
-                }
-            }
-        }
-        response = self.app.post('/api/article', data=dumps(data))
-        keywords = ['deserialize', 'missing', '"data"', 'element',
-                    'linkage object', 'relationship', '"author"']
         check_sole_error(response, 400, keywords)
 
     def test_to_one_relationship_missing_id(self):
@@ -809,31 +801,6 @@ class TestCreating(ManagerTestBase):
                     'linkage object', 'relationship', '"articles"']
         check_sole_error(response, 400, keywords)
 
-    def test_to_many_relationship_not_a_list(self):
-        """Tests that the server rejects a request to create a resource
-        with a to-many relationship when the relationship is not a list.
-
-        """
-        article = self.Article(id=1)
-        self.session.add(article)
-        self.session.commit()
-        data = {
-            'data': {
-                'type': 'person',
-                'relationships': {
-                    'articles': {
-                        'data': {
-                            'id': '1'
-                        }
-                    }
-                }
-            }
-        }
-        response = self.app.post('/api/person', data=dumps(data))
-        keywords = ['data', 'in linkage', 'relationship', '"articles"',
-                    'must be a list']
-        check_sole_error(response, 400, keywords)
-
     def test_to_many_relationship_conflicting_type(self):
         """Tests that the server rejects a request to create a resource
         with a to-many relationship when any of the relationship linkage
@@ -864,33 +831,12 @@ class TestCreating(ManagerTestBase):
                     'linkage object', 'relationship', '"articles"']
         check_sole_error(response, 409, keywords)
 
-    def test_special_field_names(self):
-        """Test that an attribute can have the name "type".
-
-        For more information, see issue #559.
-
-        """
-        data = {
-            'data': {
-                'type': 'article',
-                'attributes': {
-                    'type': u'fluff'
-                }
-            }
-        }
-        response = self.app.post('/api/article', data=dumps(data))
-        assert response.status_code == 201
-        document = loads(response.data)
-        article = document['data']
-        assert article['type'] == 'article'
-        assert article['attributes']['type'] == u'fluff'
-
 
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""
 
-    def setUp(self):
-        super(TestProcessors, self).setUp()
+    def setup(self):
+        super(TestProcessors, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -936,26 +882,111 @@ class TestProcessors(ManagerTestBase):
         document = loads(response.data)
         assert document['foo'] == 'bar'
 
-    def test_postprocessor_no_commit_on_error(self):
-        """Tests that a processing exception causes the session to be
-        flushed but not committed.
+
+class TestAssociationProxy(ManagerTestBase):
+    """Tests for creating an object with a relationship using an association
+    proxy.
+
+    """
+
+    def setup(self):
+        """Creates the database, the :class:`~flask.Flask` object, the
+        :class:`~flask.ext.restless.manager.APIManager` for that application,
+        and creates the ReSTful API endpoints for the models used in the test
+        methods.
 
         """
+        super(TestAssociationProxy, self).setup()
 
-        def raise_error(**kw):
-            raise ProcessingException(status=500)
+        class Article(self.Base):
+            __tablename__ = 'article'
+            id = Column(Integer, primary_key=True)
+            tags = association_proxy('articletags', 'tag',
+                                     creator=lambda tag: ArticleTag(tag=tag))
 
-        postprocessors = dict(POST_RESOURCE=[raise_error])
-        self.manager.create_api(self.Person, methods=['POST'],
-                                postprocessors=postprocessors)
-        data = dict(data=dict(type='person'))
-        response = self.app.post('/api/person', data=dumps(data))
-        assert response.status_code == 500
-        person_count = self.session.query(self.Person).count()
-        assert person_count == 1
-        self.session.rollback()
-        person_count = self.session.query(self.Person).count()
-        assert person_count == 0
+        class ArticleTag(self.Base):
+            __tablename__ = 'articletag'
+            article_id = Column(Integer, ForeignKey('article.id'),
+                                primary_key=True)
+            article = relationship(Article, backref=backref('articletags'))
+            tag_id = Column(Integer, ForeignKey('tag.id'), primary_key=True)
+            tag = relationship('Tag')
+            # TODO this dummy column is required to create an API for this
+            # object.
+            id = Column(Integer)
+
+        class Tag(self.Base):
+            __tablename__ = 'tag'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode)
+
+        self.Tag = Tag
+        self.Base.metadata.create_all()
+        self.manager.create_api(Article, methods=['POST'])
+        # HACK Need to create APIs for these other models because otherwise
+        # we're not able to create the link URLs to them.
+        #
+        # TODO Fix this by simply not creating links to related models for
+        # which no API has been made.
+        self.manager.create_api(Tag)
+        self.manager.create_api(ArticleTag)
+
+    def test_create(self):
+        """Test for creating a new instance of the database model that has a
+        many-to-many relation that uses an association object to allow extra
+        information to be stored on the association table.
+
+        """
+        tag1 = self.Tag(id=1)
+        tag2 = self.Tag(id=2)
+        self.session.add_all([tag1, tag2])
+        self.session.commit()
+        data = {
+            'data': {
+                'type': 'article',
+                'relationships': {
+                    'tags': {
+                        'data': [
+                            {'type': 'tag', 'id': '1'},
+                            {'type': 'tag', 'id': '2'}
+                        ]
+                    }
+                }
+            }
+        }
+        response = self.app.post('/api/article', data=dumps(data))
+        assert response.status_code == 201
+        document = loads(response.data)
+        article = document['data']
+        tags = article['relationships']['tags']['data']
+        assert ['1', '2'] == sorted(tag['id'] for tag in tags)
+
+    @skip('Not sure how to implement this.')
+    def test_scalar(self):
+        """Tests for creating a resource with an association proxy to scalars
+        as a list attribute instead of a link object.
+
+        """
+        # tag1 = self.Tag(name='foo')
+        # tag2 = self.Tag(name='bar')
+        # self.session.add_all([tag1, tag2])
+        # self.session.commit()
+        # data = dict(data=dict(type='article', tag_names=['foo', 'bar']))
+        # response = self.app.post('/api/article', data=dumps(data))
+        # print(loads(response.data))
+        # assert response.status_code == 201
+        # document = loads(response.data)
+        # article = document['data']
+        # assert ['foo', 'bar'] == article['tag_names']
+        assert False, 'Not implemented'
+
+    @skip('Not sure how to implement this.')
+    def test_dictionary_collection(self):
+        """Tests for creating a resource with a dictionary based collection via
+        an association proxy.
+
+        """
+        assert False, 'Not implemented'
 
 
 class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
@@ -964,9 +995,9 @@ class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSQLAlchemy, self).setUp()
+        super(TestFlaskSQLAlchemy, self).setup()
 
         class Person(self.db.Model):
             id = self.db.Column(self.db.Integer, primary_key=True)

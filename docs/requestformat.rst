@@ -1,3 +1,7 @@
+.. currentmodule:: flask.ext.restless
+
+.. _requestformat:
+
 Requests and responses
 ======================
 
@@ -19,49 +23,6 @@ specification.
    deleting
    updating
    updatingrelationships
-
-Schema at root endpoint
------------------------
-
-A :http:method:`GET` request to the root endpoint responds with a valid JSON
-API document whose ``meta`` element contains a ``modelinfo`` object, which
-itself contains one member for each resource object exposed by the API. Each
-element in ``modelinfo`` contains information about that resource. For example,
-a request like
-
-.. sourcecode:: http
-
-   GET /api HTTP/1.1
-   Host: example.com
-   Accept: application/vnd.api+json
-
-yields the response
-
-.. sourcecode:: http
-
-   HTTP/1.1 200 OK
-   Content-Type: application/vnd.api+json
-
-   {
-     "data": null,
-     "jsonapi": {
-       "version": "1.0"
-     },
-     "included": [],
-     "links": {},
-     "meta": {
-       "modelinfo": {
-         "article": {
-           "primarykey": "id",
-           "url": "http://example.com/api/article"
-         },
-         "person": {
-           "primarykey": "id",
-           "url": "http://example.com/api/person"
-         }
-       }
-     }
-   }
 
 .. _idstring:
 
@@ -110,10 +71,13 @@ specification, and most other server errors yield a
 :http:statuscode:`400`. Errors are included in the ``errors`` element in the
 top-level JSON document in the response body.
 
-If a request triggers a :exc:`sqlalchemy.exc.SQLAlchemyError` (or any subclass
-of that exception, including :exc:`~sqlalchemy.exc.DataError`,
-:exc:`~sqlalchemy.exc.IntegrityError`, :exc:`~sqlalchemy.exc.ProgrammingError`,
-etc.), the session will be rolled back
+If a request triggers certain types of errors, the SQLAlchemy session will be
+rolled back. Currently these errors are
+
+* :exc:`~sqlalchemy.exc.DataError`,
+* :exc:`~sqlalchemy.exc.IntegrityError`,
+* :exc:`~sqlalchemy.exc.ProgrammingError`,
+* :exc:`~sqlalchemy.orm.exc.FlushError`.
 
 .. _jsonp:
 
@@ -123,7 +87,7 @@ JSONP callbacks
 Flask-Restless responds to JavaScript clients that request JSONP responses. Add
 a ``callback=myfunc`` query parameter to the request URL on any request that
 yields a response that contains content (including endpoints for function
-evaluation; see :doc:`functionevaluation`) to have the JSON data of the
+evaluation; see :ref:`functionevaluation`) to have the JSON data of the
 response wrapped in the Javascript function ``myfunc``. This can be used to
 circumvent some cross domain scripting security issues.
 
@@ -186,10 +150,9 @@ Then in your Javascript client code, write the function ``foo`` like this:
 JSON API extensions
 -------------------
 
-Flask-Restless does not yet support the in-development `JSON API extension
-system`_.
-
-.. _JSON API extension system: http://jsonapi.org/extensions/
+Flask-Restless does not yet support the official JSON API extension. For
+progress on the implementation of the official extensions, see GitHub issues
+#478 and #477.
 
 
 Cross-Origin Resource Sharing (CORS)
@@ -207,7 +170,7 @@ sent from the server to the client) using the
 :meth:`flask.Blueprint.after_request` method::
 
     from flask import Flask
-    from flask_restless import APIManager
+    from flask.ext.restless import APIManager
 
     def add_cors_headers(response):
         response.headers['Access-Control-Allow-Origin'] = 'example.com'

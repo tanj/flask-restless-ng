@@ -28,7 +28,6 @@ from .base import APIBase
 from .base import error
 from .base import error_response
 from .base import errors_response
-from .base import jsonpify
 from .base import SingleKeyError
 
 
@@ -95,9 +94,7 @@ class RelationshipAPI(APIBase):
             return error_response(404, detail=detail)
         if is_like_list(primary_resource, relation_name):
             try:
-                filters, sort, group_by, single, ignorecase = \
-                    self.collection_parameters(resource_id=resource_id,
-                                               relation_name=relation_name)
+                filters, sort, group_by, single = self._collection_parameters()
             except (TypeError, ValueError, OverflowError) as exception:
                 detail = 'Unable to decode filter objects as JSON list'
                 return error_response(400, cause=exception, detail=detail)
@@ -168,7 +165,7 @@ class RelationshipAPI(APIBase):
             # Get the new objects to add to the relation.
             new_value = get_by(self.session, related_model, rel['id'])
             if new_value is None:
-                detail = ('No resource of type {0} found with ID'
+                detail = ('No object of type {0} found with ID'
                           ' {1}').format(type_, rel['id'])
                 return error_response(404, detail=detail)
             # Don't append a new value if it already exists in the to-many
@@ -178,14 +175,14 @@ class RelationshipAPI(APIBase):
                     related_value.append(new_value)
                 except self.validation_exceptions as exception:
                     return self._handle_validation_exception(exception)
-        # Flush all changes to database but do not commit the transaction
-        # so that postprocessors have the chance to roll it back
-        self.session.flush()
+        # TODO do we need to commit the session here?
+        #
+        #     self.session.commit()
+        #
         # Perform any necessary postprocessing.
         for postprocessor in self.postprocessors['POST_RELATIONSHIP']:
             postprocessor()
-        self.session.commit()
-        return jsonpify({}), 204
+        return {}, 204
 
     def patch(self, resource_id, relation_name):
         """Updates to a to-one or to-many relationship.
@@ -287,14 +284,14 @@ class RelationshipAPI(APIBase):
             # If the to-one relationship resource or any of the to-many
             # relationship resources do not exist, return an error response.
             if replacement is None:
-                detail = ('No resource of type {0} found'
+                detail = ('No object of type {0} found'
                           ' with ID {1}').format(type_, id_)
                 return error_response(404, detail=detail)
-            if isinstance(replacement, list) \
-               and any(value is None for value in replacement):
+            if (isinstance(replacement, list)
+                and any(value is None for value in replacement)):
                 not_found = (rel for rel, value in zip(data, replacement)
                              if value is None)
-                detail = 'No resource of type {0} found with ID {1}'
+                detail = 'No object of type {0} found with ID {1}'
                 errors = [error(detail=detail.format(rel['type'], rel['id']))
                           for rel in not_found]
                 return errors_response(404, errors)
@@ -303,14 +300,14 @@ class RelationshipAPI(APIBase):
                 setattr(instance, relation_name, replacement)
             except self.validation_exceptions as exception:
                 return self._handle_validation_exception(exception)
-        # Flush all changes to database but do not commit the transaction
-        # so that postprocessors have the chance to roll it back
-        self.session.flush()
+        # TODO do we need to commit the session here?
+        #
+        #     self.session.commit()
+        #
         # Perform any necessary postprocessing.
         for postprocessor in self.postprocessors['PATCH_RELATIONSHIP']:
             postprocessor()
-        self.session.commit()
-        return jsonpify({}), 204
+        return {}, 204
 
     def delete(self, resource_id, relation_name):
         """Deletes resources from a to-many relationship.
@@ -387,13 +384,10 @@ class RelationshipAPI(APIBase):
                 # missing from a to-many relation.
                 pass
         was_deleted = len(self.session.dirty) > 0
-        # Flush all changes to database but do not commit the transaction
-        # so that postprocessors have the chance to roll it back
-        self.session.flush()
+        self.session.commit()
         for postprocessor in self.postprocessors['DELETE_RELATIONSHIP']:
             postprocessor(was_deleted=was_deleted)
-        self.session.commit()
         if not was_deleted:
             detail = 'There was no instance to delete'
             return error_response(404, detail=detail)
-        return jsonpify({}), 204
+        return {}, 204

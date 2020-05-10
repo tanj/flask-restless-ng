@@ -1,4 +1,3 @@
 [report]
 exclude_lines =
   raise NotImplementedError
-  def __repr__

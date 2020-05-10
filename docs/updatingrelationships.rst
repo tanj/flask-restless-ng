@@ -7,8 +7,8 @@ For the purposes of concreteness in this section, suppose we have executed the
 following code on the server::
 
     from flask import Flask
-    from flask_sqlalchemy import SQLAlchemy
-    from flask_restless import APIManager
+    from flask.ext.sqlalchemy import SQLAlchemy
+    from flask.ext.restless import APIManager
 
     app = Flask(__name__)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
@@ -47,7 +47,7 @@ To update a to-one relationship, the request
 yields a :http:statuscode:`204` response.
 
 To update a to-many relationship (if enabled by setting
-``allow_to_many_replacement`` to ``True`` in :meth:`.APIManager.create_api`),
+``allow_to_many_replacement`` to ``True`` in :meth:`APIManager.create_api`),
 the request
 
 .. sourcecode:: http
@@ -122,7 +122,7 @@ yields a :http:statuscode:`204` response.
 
 To remove from a to-many relationship (if enabled by setting
 ``allow_delete_from_to_many_relationships`` to ``True`` in
-:meth:`.APIManager.create_api`), the request
+:meth:`APIManager.create_api`), the request
 
 .. sourcecode:: http
 

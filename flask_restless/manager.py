@@ -20,7 +20,6 @@ from collections import namedtuple
 from uuid import uuid1
 import sys
 
-from sqlalchemy.inspection import inspect
 from flask import Blueprint
 from flask import url_for as flask_url_for
 
@@ -34,7 +33,6 @@ from .serialization import DefaultDeserializer
 from .views import API
 from .views import FunctionAPI
 from .views import RelationshipAPI
-from .views import SchemaView
 
 #: The names of HTTP methods that allow fetching information.
 READONLY_METHODS = frozenset(('GET', ))
@@ -50,7 +48,7 @@ ALL_METHODS = READONLY_METHODS | WRITEONLY_METHODS
 DEFAULT_URL_PREFIX = '/api'
 
 if sys.version_info < (3, ):
-    STRING_TYPES = (str, unicode)  # noqa
+    STRING_TYPES = (str, unicode)
 else:
     STRING_TYPES = (str, )
 
@@ -75,8 +73,8 @@ else:
 #:   model exposed by this API.
 #: - `primary_key`, the primary key used by the model
 #:
-APIInfo = namedtuple('APIInfo', ['collection_name', 'blueprint_name',
-                                 'serializer', 'primary_key'])
+APIInfo = namedtuple('APIInfo', ['collection_name', 'blueprint_name', 'serializer',
+                                 'primary_key'])
 
 
 class IllegalArgumentError(Exception):
@@ -101,7 +99,7 @@ class APIManager(object):
     `session` is the :class:`~sqlalchemy.orm.session.Session` object in
     which changes to the database will be made.
 
-    `flask_sqlalchemy_db` is the :class:`~flask_sqlalchemy.SQLAlchemy`
+    `flask_sqlalchemy_db` is the :class:`~flask.ext.sqlalchemy.SQLAlchemy`
     object with which `app` has been registered and which contains the
     database models for which API endpoints will be created.
 
@@ -110,7 +108,7 @@ class APIManager(object):
     For example, to use this class with models defined in pure SQLAlchemy::
 
         from flask import Flask
-        from flask_restless import APIManager
+        from flask.ext.restless import APIManager
         from sqlalchemy import create_engine
         from sqlalchemy.orm.session import sessionmaker
 
@@ -123,8 +121,8 @@ class APIManager(object):
     and with models defined with Flask-SQLAlchemy::
 
         from flask import Flask
-        from flask_restless import APIManager
-        from flask_sqlalchemy import SQLAlchemy
+        from flask.ext.restless import APIManager
+        from flask.ext.sqlalchemy import SQLAlchemy
 
         app = Flask(__name__)
         db = SQLALchemy(app)
@@ -138,7 +136,7 @@ class APIManager(object):
     the constructor will be ignored for that endpoint.
 
     `postprocessors` and `preprocessors` must be dictionaries as
-    described in the section :doc:`processors`. These preprocessors and
+    described in the section :ref:`processors`. These preprocessors and
     postprocessors will be applied to all requests to and responses from
     APIs created using this APIManager object. The preprocessors and
     postprocessors given in these keyword arguments will be prepended to
@@ -147,7 +145,7 @@ class APIManager(object):
     functions listed here will be executed before any functions
     specified in the :meth:`create_api_blueprint` method). For more
     information on using preprocessors and postprocessors, see
-    :doc:`processors`.
+    :ref:`processors`.
 
     """
 
@@ -181,24 +179,6 @@ class APIManager(object):
         #: and whose values are the corresponding collection names for
         #: those models.
         self.created_apis_for = {}
-
-        # TODO In Python 2.7, this can just be
-        #
-        #     self.models = self.created_apis_for.viewkeys()
-        #
-        # and in Python 3+,
-        #
-        #     self.models = self.created_apis_for.keys()
-        #
-        # Since we need to support Python 2.6, we need to manually keep
-        # `self.models` updated on each addition to
-        # `self.created_apis_for`.
-
-        #: The set of models for which an API has been created.
-        #:
-        #: This set matches the set of keys of :attr:`.created_apis_for`
-        #: exactly.
-        self.models = set()
 
         #: List of blueprints created by :meth:`create_api` to be registered
         #: to the app when calling :meth:`init_app`.
@@ -234,43 +214,6 @@ class APIManager(object):
 
         """
         return APIManager.APINAME_FORMAT.format(collection_name)
-
-    def _create_schema(self):
-        """Create a blueprint with an endpoint that exposes the API schema.
-
-        This method returns an instance of :class:`flask.Blueprint` that
-        has a single route at the top-level that exposes the URLs for
-        each created API; for example, `GET /api` yields a response that
-        indicates
-
-        .. sourcecode:: json
-
-           {
-            "person": "http://example.com/api/person",
-            "article": "http://example.com/api/person"
-           }
-
-        The view provided by this blueprint depends on the value of
-        :attr:`.models`, so changes to :attr:`.models` will be reflected
-        in the response.
-
-        """
-        # It is important that `self.models` is being passed as
-        # reference here, since it will be updated each time
-        # `create_api` is called (in the setting where APIManager is
-        # provided with a Flask object at instantiation time).
-        schema_view = SchemaView.as_view('schemaview', self.models)
-        url_prefix = self.url_prefix or DEFAULT_URL_PREFIX
-
-        # The name of this blueprint must be unique, so in order to
-        # accomodate the situation where we have multiple APIManager
-        # instances calling `init_app` on a single Flask instance, we
-        # append the ID of this APIManager object to the name of the
-        # blueprint.
-        name = 'manager{0}.schema'.format(id(self))
-        blueprint = Blueprint(name, __name__, url_prefix=url_prefix)
-        blueprint.add_url_rule('', view_func=schema_view)
-        return blueprint
 
     def model_for(self, collection_name):
         """Returns the SQLAlchemy model class whose type is given by the
@@ -379,6 +322,7 @@ class APIManager(object):
         return self.created_apis_for[model].primary_key
 
     def init_app(self, app):
+
         """Registers any created APIs on the given Flask application.
 
         This function should only be called if no Flask application was
@@ -393,7 +337,7 @@ class APIManager(object):
         To use this method with pure SQLAlchemy, for example::
 
             from flask import Flask
-            from flask_restless import APIManager
+            from flask.ext.restless import APIManager
             from sqlalchemy import create_engine
             from sqlalchemy.orm.session import sessionmaker
 
@@ -417,8 +361,8 @@ class APIManager(object):
         and with models defined with Flask-SQLAlchemy::
 
             from flask import Flask
-            from flask_restless import APIManager
-            from flask_sqlalchemy import SQLAlchemy
+            from flask.ext.restless import APIManager
+            from flask.ext.sqlalchemy import SQLAlchemy
 
             db = SQLALchemy(app)
 
@@ -439,9 +383,6 @@ class APIManager(object):
         # Register any queued blueprints on the given application.
         for blueprint in self.blueprints:
             app.register_blueprint(blueprint)
-        # Create a view for the top-level endpoint that returns the schema.
-        blueprint = self._create_schema()
-        app.register_blueprint(blueprint)
 
     def create_api_blueprint(self, name, model, methods=READONLY_METHODS,
                              url_prefix=None, collection_name=None,
@@ -450,7 +391,7 @@ class APIManager(object):
                              validation_exceptions=None, page_size=10,
                              max_page_size=100, preprocessors=None,
                              postprocessors=None, primary_key=None,
-                             serializer_class=None, deserializer_class=None,
+                             serializer=None, deserializer=None,
                              includes=None, allow_to_many_replacement=False,
                              allow_delete_from_to_many_relationships=False,
                              allow_client_generated_ids=False):
@@ -483,10 +424,10 @@ class APIManager(object):
         `model` is the SQLAlchemy model class for which a ReSTful interface
         will be created.
 
-        `app` is the :class:`~flask.Flask` object on which we expect the
-        blueprint created in this method to be eventually registered. If
-        not specified, the Flask application specified in the
-        constructor of this class is used.
+        `app` is the :class:`Flask` object on which we expect the blueprint
+        created in this method to be eventually registered. If not specified,
+        the Flask application specified in the constructor of this class is
+        used.
 
         `methods` is a list of strings specifying the HTTP methods that
         will be made available on the ReSTful API for the specified
@@ -497,13 +438,13 @@ class APIManager(object):
           resources, to-many and to-one relations of resources, and
           particular members of a to-many relation. Furthermore,
           relationship information will be accessible. For more
-          information, see :doc:`fetching`.
+          information, see :ref:`fetching`.
         * If ``'POST'`` is in the list, :http:method:`post` requests
           will be allowed at endpoints for collections of resources. For
-          more information, see :doc:`creating`.
+          more information, see :ref:`creating`.
         * If ``'DELETE'`` is in the list, :http:method:`delete` requests
           will be allowed at endpoints for individual resources. For
-          more information, see :doc:`deleting`.
+          more information, see :ref:`deleting`.
         * If ``'PATCH'`` is in the list, :http:method:`patch` requests
           will be allowed at endpoints for individual
           resources. Replacing a to-many relationship when issuing a
@@ -519,8 +460,8 @@ class APIManager(object):
           ``allow_delete_from_to_many_relationships`` is set to
           ``True``), and replace a to-many relationship via the
           :http:method:`patch` method (if ``allow_to_many_replacement``
-          is set to ``True``). For more information, see :doc:`updating`
-          and :doc:`updatingrelationships`.
+          is set to ``True``). For more information, see :ref:`updating`
+          and :ref:`updatingrelationships`.
 
         The default set of methods provides a read-only interface (that is,
         only :http:method:`get` requests are allowed).
@@ -543,7 +484,7 @@ class APIManager(object):
         requests to ``/api/eval/<collection_name>`` will return the
         result of evaluating SQL functions specified in the body of the
         request. For information on the request format, see
-        :doc:`functionevaluation`. This is ``False`` by default.
+        :ref:`functionevaluation`. This is ``False`` by default.
 
         .. warning::
 
@@ -579,7 +520,7 @@ class APIManager(object):
         be specified; if both are not ``None``, then this function will raise a
         :exc:`IllegalArgumentError`.
 
-        See :doc:`sparse` for more information on specifying which fields will
+        See :ref:`sparse` for more information on specifying which fields will
         be included in the resource object representation.
 
         `validation_exceptions` is the tuple of possible exceptions raised by
@@ -595,13 +536,18 @@ class APIManager(object):
         represents the maximum page size that a client can request. Even if a
         client specifies that greater than `max_page_size` should be returned,
         at most `max_page_size` results will be returned. For more information,
-        see :doc:`pagination`.
+        see :ref:`pagination`.
 
-        `serializer_class` and `deserializer_class` are custom
-        serializer and deserializer classes. The former must be a
-        subclass of :class:`DefaultSerializer` and the latter a subclass
-        of :class:`DefaultDeserializer`. For more information on using
-        these, see :doc:`serialization`.
+        `serializer` and `deserializer` are custom serialization
+        functions. The former function must take a single positional
+        argument representing the instance of the model to serialize and
+        an additional keyword argument ``only`` representing the fields
+        to include in the serialized representation of the instance, and
+        must return a dictionary representation of that instance. The
+        latter function must take a single argument representing the
+        dictionary representation of an instance of the model and must
+        return an instance of `model` that has those attributes. For
+        more information, see :ref:`serialization`.
 
         `preprocessors` is a dictionary mapping strings to lists of
         functions. Each key represents a type of endpoint (for example,
@@ -611,7 +557,7 @@ class APIManager(object):
         functions will be called in the order given here. The `postprocessors`
         keyword argument is essentially the same, except the given functions
         are called after all other code. For more information on preprocessors
-        and postprocessors, see :doc:`processors`.
+        and postprocessors, see :ref:`processors`.
 
         `primary_key` is a string specifying the name of the column of `model`
         to use as the primary key for the purposes of creating URLs. If the
@@ -624,7 +570,7 @@ class APIManager(object):
         resource object representation of an instance of `model`. Each element
         of `includes` is the name of a field of `model` (that is, either an
         attribute or a relationship). For more information, see
-        :doc:`includes`.
+        :ref:`includes`.
 
         If `allow_to_many_replacement` is ``True`` and this API allows
         :http:method:`patch` requests, the server will allow two types
@@ -634,38 +580,33 @@ class APIManager(object):
         client to replace the entire to-many relationship when making a
         :http:method:`patch` request to a to-many relationship endpoint.
         This is ``False`` by default. For more information, see
-        :doc:`updating` and :doc:`updatingrelationships`.
+        :ref:`updating` and :ref:`updatingrelationships`.
 
         If `allow_delete_from_to_many_relationships` is ``True`` and
         this API allows :http:method:`patch` requests, the server will
         allow the client to delete resources from any to-many
         relationship of the model. This is ``False`` by default. For
-        more information, see :doc:`updatingrelationships`.
+        more information, see :ref:`updatingrelationships`.
 
         If `allow_client_generated_ids` is ``True`` and this API allows
         :http:method:`post` requests, the server will allow the client to
         specify the ID for the resource to create. JSON API recommends that
         this be a UUID. This is ``False`` by default. For more information, see
-        :doc:`creating`.
+        :ref:`creating`.
 
         """
         # Perform some sanity checks on the provided keyword arguments.
         if only is not None and exclude is not None:
             msg = 'Cannot simultaneously specify both `only` and `exclude`'
             raise IllegalArgumentError(msg)
+        if not hasattr(model, 'id'):
+            msg = 'Provided model must have an `id` attribute'
+            raise IllegalArgumentError(msg)
         if collection_name == '':
             msg = 'Collection name must be nonempty'
             raise IllegalArgumentError(msg)
         if collection_name is None:
-            # If the model is polymorphic in a single table inheritance
-            # scenario, this should *not* be the tablename, but perhaps
-            # the polymorphic identity?
-            mapper = inspect(model)
-            if mapper.polymorphic_identity is not None:
-                collection_name = mapper.polymorphic_identity
-            else:
-                collection_name = model.__table__.name
-
+            collection_name = model.__table__.name
         # convert all method names to upper case
         methods = frozenset((m.upper() for m in methods))
         # the name of the API, for use in creating the view and the blueprint
@@ -676,8 +617,10 @@ class APIManager(object):
         postprocessors_ = defaultdict(list)
         preprocessors_.update(preprocessors or {})
         postprocessors_.update(postprocessors or {})
+        # for key, value in self.restless_info.universal_preprocessors.items():
         for key, value in self.pre.items():
             preprocessors_[key] = value + preprocessors_[key]
+        # for key, value in self.restless_info.universal_postprocessors.items():
         for key, value in self.post.items():
             postprocessors_[key] = value + postprocessors_[key]
         # Validate that all the additional attributes exist on the model.
@@ -686,34 +629,32 @@ class APIManager(object):
                 if isinstance(attr, STRING_TYPES) and not hasattr(model, attr):
                     msg = 'no attribute "{0}" on model {1}'.format(attr, model)
                     raise AttributeError(msg)
-        if (additional_attributes is not None and exclude is not None and
-                any(attr in exclude for attr in additional_attributes)):
-            msg = ('Cannot exclude attributes listed in the'
-                   ' `additional_attributes` keyword argument')
-            raise IllegalArgumentError(msg)
         # Create a default serializer and deserializer if none have been
         # provided.
-        if serializer_class is None:
-            serializer_class = DefaultSerializer
-        if deserializer_class is None:
-            deserializer_class = DefaultDeserializer
-        # Instantiate the serializer and deserializer.
-        attrs = additional_attributes
-        serializer = serializer_class(only=only, exclude=exclude,
-                                      additional_attributes=attrs)
-        acgi = allow_client_generated_ids
-        deserializer = deserializer_class(self.session, model,
-                                          allow_client_generated_ids=acgi)
+        if serializer is None:
+            serializer = DefaultSerializer(only, exclude,
+                                           additional_attributes)
+            # if validation_exceptions is None:
+            #     validation_exceptions = [DeserializationException]
+            # else:
+            #     validation_exceptions.append(DeserializationException)
+        # session = self.restlessinfo.session
+        session = self.session
+        if deserializer is None:
+            deserializer = DefaultDeserializer(self.session, model,
+                                               allow_client_generated_ids)
         # Create the view function for the API for this model.
         #
         # Rename some variables with long names for the sake of brevity.
         atmr = allow_to_many_replacement
-        api_view = API.as_view(apiname, self.session, model,
+        api_view = API.as_view(apiname, session, model,
+                               # Keyword arguments for APIBase.__init__()
                                preprocessors=preprocessors_,
                                postprocessors=postprocessors_,
                                primary_key=primary_key,
                                validation_exceptions=validation_exceptions,
                                allow_to_many_replacement=atmr,
+                               # Keyword arguments for API.__init__()
                                page_size=page_size,
                                max_page_size=max_page_size,
                                serializer=serializer,
@@ -756,7 +697,7 @@ class APIManager(object):
         rapi_view = RelationshipAPI.as_view
         adftmr = allow_delete_from_to_many_relationships
         relationship_api_view = \
-            rapi_view(relationship_api_name, self.session, model,
+            rapi_view(relationship_api_name, session, model,
                       # Keyword arguments for APIBase.__init__()
                       preprocessors=preprocessors_,
                       postprocessors=postprocessors_,
@@ -820,8 +761,7 @@ class APIManager(object):
         # evaluating functions on all instances of the specified model
         if allow_functions:
             eval_api_name = '{0}.eval'.format(apiname)
-            eval_api_view = FunctionAPI.as_view(eval_api_name, self.session,
-                                                model)
+            eval_api_view = FunctionAPI.as_view(eval_api_name, session, model)
             eval_endpoint = '/eval{0}'.format(collection_url)
             eval_methods = ['GET']
             blueprint.add_url_rule(eval_endpoint, methods=eval_methods,
@@ -831,7 +771,6 @@ class APIManager(object):
         # the specified model.
         self.created_apis_for[model] = APIInfo(collection_name, blueprint.name,
                                                serializer, primary_key)
-        self.models.add(model)
         return blueprint
 
     def create_api(self, *args, **kw):
@@ -896,11 +835,3 @@ class APIManager(object):
         # application.
         if self.app is not None:
             self.app.register_blueprint(blueprint)
-            # If this is the first blueprint, create a schema
-            # endpoint. It will be updated indirectly each time
-            # `create_api_blueprint` is called, so it is not necessary
-            # to make any further modifications to the registered
-            # blueprint.
-            if len(self.blueprints) == 1:
-                blueprint = self._create_schema()
-                self.app.register_blueprint(blueprint)

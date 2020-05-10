@@ -28,7 +28,6 @@ from sqlalchemy import Integer
 from sqlalchemy import Unicode
 from sqlalchemy.orm import relationship
 
-from ..helpers import check_sole_error
 from ..helpers import dumps
 from ..helpers import loads
 from ..helpers import ManagerTestBase
@@ -42,14 +41,14 @@ class TestUpdatingResources(ManagerTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestUpdatingResources, self).setUp()
+        super(TestUpdatingResources, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -85,8 +84,7 @@ class TestUpdatingResources(ManagerTestBase):
         For more information, see the `Updating a Resource's Attributes`_
         section of the JSON API specification.
 
-        .. _Updating a Resource's Attributes:
-           http://jsonapi.org/format/#crud-updating-resource-attributes
+        .. _Updating a Resource's Attributes: http://jsonapi.org/format/#crud-updating-resource-attributes
 
         """
         person = self.Person(id=1, name=u'foo', age=10)
@@ -103,11 +101,10 @@ class TestUpdatingResources(ManagerTestBase):
     def test_to_one(self):
         """Tests that the client can update a resource's to-one relationships.
 
-        For more information, see the `Updating a Resource's To-One
-        Relationships`_ section of the JSON API specification.
+        For more information, see the `Updating a Resource's To-One Relationships`_
+        section of the JSON API specification.
 
-        .. _Updating a Resource's To-One Relationships:
-           http://jsonapi.org/format/#crud-updating-resource-to-one-relationships
+        .. _Updating a Resource's To-One Relationships: http://jsonapi.org/format/#crud-updating-resource-to-one-relationships
 
         """
         person1 = self.Person(id=1)
@@ -135,11 +132,10 @@ class TestUpdatingResources(ManagerTestBase):
     def test_remove_to_one(self):
         """Tests that the client can remove a resource's to-one relationship.
 
-        For more information, see the `Updating a Resource's To-One
-        Relationships`_ section of the JSON API specification.
+        For more information, see the `Updating a Resource's To-One Relationships`_
+        section of the JSON API specification.
 
-        .. _Updating a Resource's To-One Relationships:
-           http://jsonapi.org/format/#crud-updating-resource-to-one-relationships
+        .. _Updating a Resource's To-One Relationships: http://jsonapi.org/format/#crud-updating-resource-to-one-relationships
 
         """
         person = self.Person(id=1)
@@ -162,11 +158,10 @@ class TestUpdatingResources(ManagerTestBase):
     def test_to_many(self):
         """Tests that the client can update a resource's to-many relationships.
 
-        For more information, see the `Updating a Resource's To-Many
-        Relationships`_ section of the JSON API specification.
+        For more information, see the `Updating a Resource's To-Many Relationships`_
+        section of the JSON API specification.
 
-        .. _Updating a Resource's To-Many Relationships:
-           http://jsonapi.org/format/#crud-updating-resource-to-many-relationships
+        .. _Updating a Resource's To-Many Relationships: http://jsonapi.org/format/#crud-updating-resource-to-many-relationships
 
         """
         person = self.Person(id=1)
@@ -199,11 +194,10 @@ class TestUpdatingResources(ManagerTestBase):
     def test_to_many_clear(self):
         """Tests that the client can clear a resource's to-many relationships.
 
-        For more information, see the `Updating a Resource's To-Many
-        Relationships`_ section of the JSON API specification.
+        For more information, see the `Updating a Resource's To-Many Relationships`_
+        section of the JSON API specification.
 
-        .. _Updating a Resource's To-Many Relationships:
-           http://jsonapi.org/format/#crud-updating-resource-to-many-relationships
+        .. _Updating a Resource's To-Many Relationships: http://jsonapi.org/format/#crud-updating-resource-to-many-relationships
 
         """
         person = self.Person(id=1)
@@ -235,11 +229,10 @@ class TestUpdatingResources(ManagerTestBase):
         has been configured to disallow full replacement of a to-many
         relationship.
 
-        For more information, see the `Updating a Resource's To-Many
-        Relationships`_ section of the JSON API specification.
+        For more information, see the `Updating a Resource's To-Many Relationships`_
+        section of the JSON API specification.
 
-        .. _Updating a Resource's To-Many Relationships:
-           http://jsonapi.org/format/#crud-updating-resource-to-many-relationships
+        .. _Updating a Resource's To-Many Relationships: http://jsonapi.org/format/#crud-updating-resource-to-many-relationships
 
         """
         person = self.Person(id=1)
@@ -269,14 +262,11 @@ class TestUpdatingResources(ManagerTestBase):
         tag = self.Tag(id=1)
         self.session.add(tag)
         self.session.commit()
-        data = {
-            'data': {
-                'type': 'tag',
-                'id': '1',
-                'attributes': {
-                    'name': u'foo'
+        data = {'data':
+                {'type': 'tag',
+                 'id': '1',
+                 'attributes': {'name': u'foo'}
                 }
-            }
         }
         response = self.app.patch('/api/tag/1', data=dumps(data))
         assert response.status_code == 200
@@ -294,8 +284,7 @@ class TestUpdatingResources(ManagerTestBase):
         For more information, see the `404 Not Found`_ section of the JSON API
         specification.
 
-        .. _404 Not Found:
-           http://jsonapi.org/format/#crud-updating-responses-404
+        .. _404 Not Found: http://jsonapi.org/format/#crud-updating-responses-404
 
         """
         data = dict(data=dict(type='person', id='1'))
@@ -309,8 +298,7 @@ class TestUpdatingResources(ManagerTestBase):
         For more information, see the `404 Not Found`_ section of the JSON API
         specification.
 
-        .. _404 Not Found:
-           http://jsonapi.org/format/#crud-updating-responses-404
+        .. _404 Not Found: http://jsonapi.org/format/#crud-updating-responses-404
 
         """
         person = self.Person(id=1)
@@ -340,8 +328,7 @@ class TestUpdatingResources(ManagerTestBase):
         For more information, see the `409 Conflict`_ section of the JSON API
         specification.
 
-        .. _409 Conflict:
-           http://jsonapi.org/format/#crud-updating-responses-409
+        .. _409 Conflict: http://jsonapi.org/format/#crud-updating-responses-409
 
         """
         person1 = self.Person(id=1, name=u'foo')
@@ -361,22 +348,16 @@ class TestUpdatingResources(ManagerTestBase):
         For more information, see the `409 Conflict`_ section of the JSON API
         specification.
 
-        .. _409 Conflict:
-           http://jsonapi.org/format/#crud-updating-responses-409
+        .. _409 Conflict: http://jsonapi.org/format/#crud-updating-responses-409
 
         """
         person = self.Person(id=1)
         self.session.add(person)
         self.session.commit()
-        data = {
-            'data': {
-                'type': 'bogus',
-                'id': '1'
-            }
-        }
+        data = dict(data=dict(type='bogus', id='1'))
         response = self.app.patch('/api/person/1', data=dumps(data))
-        check_sole_error(response, 409, ['expected', 'type', 'person',
-                                         'bogus'])
+        assert response.status_code == 409
+        # TODO test for error details
 
     def test_conflicting_id(self):
         """Tests that an attempt to update a resource with the wrong ID causes
@@ -385,8 +366,7 @@ class TestUpdatingResources(ManagerTestBase):
         For more information, see the `409 Conflict`_ section of the JSON API
         specification.
 
-        .. _409 Conflict:
-           http://jsonapi.org/format/#crud-updating-responses-409
+        .. _409 Conflict: http://jsonapi.org/format/#crud-updating-responses-409
 
         """
         person = self.Person(id=1)

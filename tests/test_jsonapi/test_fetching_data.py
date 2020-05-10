@@ -17,15 +17,6 @@ the JSON API specification.
 .. _Fetching Data: http://jsonapi.org/format/#fetching
 
 """
-from functools import partial
-import re
-# In Python 3...
-try:
-    from urllib.parse import unquote
-# In Python 2...
-except ImportError:
-    from urlparse import unquote
-
 from sqlalchemy import Column
 from sqlalchemy import Float
 from sqlalchemy import ForeignKey
@@ -37,9 +28,6 @@ from sqlalchemy.orm import relationship
 from ..helpers import loads
 from ..helpers import ManagerTestBase
 
-#: A regular expression that captures a relationship name in a Link header.
-REL_REGEX = re.compile('rel="(.*)"')
-
 
 class TestFetchingData(ManagerTestBase):
     """Tests corresponding to the `Fetching Data`_ section of the JSON API
@@ -49,14 +37,14 @@ class TestFetchingData(ManagerTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestFetchingData, self).setUp()
+        super(TestFetchingData, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -293,8 +281,7 @@ class TestFetchingData(ManagerTestBase):
         For more information, see the `Fetching Relationships`_ section
         of JSON API specification.
 
-        .. _Fetching Relationships:
-           http://jsonapi.org/format/#fetching-relationships
+        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
 
         """
         article = self.Article(id=1)
@@ -318,8 +305,7 @@ class TestFetchingData(ManagerTestBase):
         For more information, see the `Fetching Relationships`_ section of JSON
         API specification.
 
-        .. _Fetching Relationships:
-           http://jsonapi.org/format/#fetching-relationships
+        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
 
         """
         article = self.Article(id=1)
@@ -340,8 +326,7 @@ class TestFetchingData(ManagerTestBase):
         For more information, see the `Fetching Relationships`_ section
         of JSON API specification.
 
-        .. _Fetching Relationships:
-           http://jsonapi.org/format/#fetching-relationships
+        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
 
         """
         person = self.Person(id=1)
@@ -363,8 +348,7 @@ class TestFetchingData(ManagerTestBase):
         For more information, see the `Fetching Relationships`_ section of JSON
         API specification.
 
-        .. _Fetching Relationships:
-           http://jsonapi.org/format/#fetching-relationships
+        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
 
         """
         article = self.Article(id=1)
@@ -382,8 +366,7 @@ class TestFetchingData(ManagerTestBase):
         For more information, see the `Fetching Relationships`_ section
         of JSON API specification.
 
-        .. _Fetching Relationships:
-           http://jsonapi.org/format/#fetching-relationships
+        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
 
         """
         article = self.Article(id=1)
@@ -400,13 +383,12 @@ class TestInclusion(ManagerTestBase):
     """Tests corresponding to the `Inclusion of Related Resources`_
     section of the JSON API specification.
 
-    .. _Inclusion of Related Resources:
-       http://jsonapi.org/format/#fetching-includes
+    .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
 
     """
 
-    def setUp(self):
-        super(TestInclusion, self).setUp()
+    def setup(self):
+        super(TestInclusion, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -437,14 +419,13 @@ class TestInclusion(ManagerTestBase):
         self.manager.create_api(Person)
 
     def test_default_inclusion(self):
-        """Tests that by default, Flask-Restless includes no included
-        resources in compound documents.
+        """Tests that by default, Flask-Restless includes no information
+        in compound documents.
 
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
 
-        .. _Inclusion of Related Resources:
-           http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
 
         """
         person = self.Person(id=1)
@@ -459,10 +440,7 @@ class TestInclusion(ManagerTestBase):
         person = document['data']
         articles = person['relationships']['articles']['data']
         assert ['1'] == sorted(article['id'] for article in articles)
-        # The current implementation of Flask-Restless has an empty list
-        # for `included`.
-        assert document['included'] == []
-        # assert 'included' not in document
+        assert 'included' not in document
 
     def test_set_default_inclusion(self):
         """Tests that the user can specify default compound document
@@ -471,8 +449,7 @@ class TestInclusion(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
 
-        .. _Inclusion of Related Resources:
-           http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
 
         """
         person = self.Person(id=1)
@@ -500,8 +477,7 @@ class TestInclusion(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
 
-        .. _Inclusion of Related Resources:
-           http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
 
         """
         person = self.Person(id=1, name=u'foo')
@@ -529,8 +505,7 @@ class TestInclusion(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
 
-        .. _Inclusion of Related Resources:
-           http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
 
         """
         person = self.Person(id=1, name=u'foo')
@@ -560,8 +535,7 @@ class TestInclusion(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
 
-        .. _Inclusion of Related Resources:
-           http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
 
         """
         article = self.Article(id=1)
@@ -589,8 +563,7 @@ class TestInclusion(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
 
-        .. _Inclusion of Related Resources:
-           http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
 
         """
         person1 = self.Person(id=1)
@@ -621,8 +594,7 @@ class TestInclusion(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
 
-        .. _Inclusion of Related Resources:
-           http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
 
         """
         person1 = self.Person(id=1)
@@ -666,8 +638,7 @@ class TestInclusion(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_ section
         of the JSON API specification.
 
-        .. _Inclusion of Related Resources:
-           http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
 
         """
         person = self.Person(id=1)
@@ -697,8 +668,8 @@ class TestSparseFieldsets(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestSparseFieldsets, self).setUp()
+    def setup(self):
+        super(TestSparseFieldsets, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -727,8 +698,7 @@ class TestSparseFieldsets(ManagerTestBase):
         For more information, see the `Sparse Fieldsets`_ section
         of the JSON API specification.
 
-        .. _Sparse Fieldsets:
-           http://jsonapi.org/format/#fetching-sparse-fieldsets
+        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
 
         """
         person = self.Person(id=1, name=u'foo', age=99)
@@ -750,8 +720,7 @@ class TestSparseFieldsets(ManagerTestBase):
         For more information, see the `Sparse Fieldsets`_ section
         of the JSON API specification.
 
-        .. _Sparse Fieldsets:
-           http://jsonapi.org/format/#fetching-sparse-fieldsets
+        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
 
         """
         person = self.Person(id=1, name=u'foo', age=99)
@@ -771,8 +740,7 @@ class TestSparseFieldsets(ManagerTestBase):
         For more information, see the `Sparse Fieldsets`_ section
         of the JSON API specification.
 
-        .. _Sparse Fieldsets:
-           http://jsonapi.org/format/#fetching-sparse-fieldsets
+        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
 
         """
         person1 = self.Person(id=1, name=u'foo', age=99)
@@ -793,14 +761,12 @@ class TestSparseFieldsets(ManagerTestBase):
         For more information, see the `Sparse Fieldsets`_ section
         of the JSON API specification.
 
-        .. _Sparse Fieldsets:
-           http://jsonapi.org/format/#fetching-sparse-fieldsets
+        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
 
         """
         article = self.Article(id=1, title=u'bar')
-        person = self.Person(id=1, name=u'foo', age=99)
-        article.author = person
-        self.session.add_all([article, person])
+        person = self.Person(id=1, name=u'foo', age=99, articles=[article])
+        self.session.add_all([person, article])
         self.session.commit()
         # Person objects should only have ID and name, while article objects
         # should only have ID.
@@ -829,8 +795,8 @@ class TestSorting(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestSorting, self).setUp()
+    def setup(self):
+        super(TestSorting, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -945,6 +911,7 @@ class TestSorting(ManagerTestBase):
         articles = document['data']
         assert ['2', '1', '3'] == [c['id'] for c in articles]
 
+
     def test_sort_multiple_relationship_attributes(self):
         """Tests that the client can sort by multiple relationship
         attributes.
@@ -986,8 +953,7 @@ class TestSorting(ManagerTestBase):
             to_string = unicode
         except NameError:
             to_string = str
-        Article = partial(self.Article, author=person)
-        articles = [Article(id=i, title=to_string(i)) for i in range(5)]
+        articles = [self.Article(id=i, title=to_string(i), author=person) for i in range(5)]
         self.session.add(person)
         self.session.add_all(articles)
         self.session.commit()
@@ -1010,8 +976,8 @@ class TestPagination(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestPagination, self).setUp()
+    def setup(self):
+        super(TestPagination, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -1033,10 +999,10 @@ class TestPagination(ManagerTestBase):
         response = self.app.get('/api/person')
         document = loads(response.data)
         links = document['links']
-        self.assertIn('first', links)
-        self.assertIn('last', links)
-        self.assertIn('prev', links)
-        self.assertIn('next', links)
+        assert 'first' in links
+        assert 'last' in links
+        assert 'prev' in links
+        assert 'next' in links
 
     def test_no_client_parameters(self):
         """Tests that a request without pagination query parameters returns the
@@ -1053,20 +1019,15 @@ class TestPagination(ManagerTestBase):
         self.session.commit()
         response = self.app.get('/api/person')
         document = loads(response.data)
-
         pagination = document['links']
-        first = unquote(pagination['first'])
-        last = unquote(pagination['last'])
-        next_ = unquote(pagination['next'])
-
-        self.assertIn('/api/person?', first)
-        self.assertIn('page[number]=1', first)
-        self.assertIn('/api/person?', last)
-        self.assertIn('page[number]=3', last)
-        self.assertIs(pagination['prev'], None)
-        self.assertIn('/api/person?', next_)
-        self.assertIn('page[number]=2', next_)
-        self.assertEqual(len(document['data']), 10)
+        assert '/api/person?' in pagination['first']
+        assert 'page[number]=1' in pagination['first']
+        assert '/api/person?' in pagination['last']
+        assert 'page[number]=3' in pagination['last']
+        assert pagination['prev'] is None
+        assert '/api/person?' in pagination['next']
+        assert 'page[number]=2' in pagination['next']
+        assert len(document['data']) == 10
 
     def test_client_page_and_size(self):
         """Tests that a request that specifies both page number and page size
@@ -1084,22 +1045,16 @@ class TestPagination(ManagerTestBase):
         query_string = {'page[number]': 2, 'page[size]': 3}
         response = self.app.get('/api/person', query_string=query_string)
         document = loads(response.data)
-
         pagination = document['links']
-        first = unquote(pagination['first'])
-        last = unquote(pagination['last'])
-        next_ = unquote(pagination['next'])
-        prev = unquote(pagination['prev'])
-
-        self.assertIn('/api/person?', first)
-        self.assertIn('page[number]=1', first)
-        self.assertIn('/api/person?', last)
-        self.assertIn('page[number]=9', last)
-        self.assertIn('/api/person?', prev)
-        self.assertIn('page[number]=1', prev)
-        self.assertIn('/api/person?', next_)
-        self.assertIn('page[number]=3', next_)
-        self.assertEqual(len(document['data']), 3)
+        assert '/api/person?' in pagination['first']
+        assert 'page[number]=1' in pagination['first']
+        assert '/api/person?' in pagination['last']
+        assert 'page[number]=9' in pagination['last']
+        assert '/api/person?' in pagination['prev']
+        assert 'page[number]=1' in pagination['prev']
+        assert '/api/person?' in pagination['next']
+        assert 'page[number]=3' in pagination['next']
+        assert len(document['data']) == 3
 
     def test_client_number_only(self):
         """Tests that a request that specifies only the page number returns the
@@ -1117,22 +1072,16 @@ class TestPagination(ManagerTestBase):
         query_string = {'page[number]': 2}
         response = self.app.get('/api/person', query_string=query_string)
         document = loads(response.data)
-
         pagination = document['links']
-        first = unquote(pagination['first'])
-        last = unquote(pagination['last'])
-        next_ = unquote(pagination['next'])
-        prev = unquote(pagination['prev'])
-
-        self.assertIn('/api/person?', first)
-        self.assertIn('page[number]=1', first)
-        self.assertIn('/api/person?', last)
-        self.assertIn('page[number]=3', last)
-        self.assertIn('/api/person?', prev)
-        self.assertIn('page[number]=1', prev)
-        self.assertIn('/api/person?', next_)
-        self.assertIn('page[number]=3', next_)
-        self.assertEqual(len(document['data']), 10)
+        assert '/api/person?' in pagination['first']
+        assert 'page[number]=1' in pagination['first']
+        assert '/api/person?' in pagination['last']
+        assert 'page[number]=3' in pagination['last']
+        assert '/api/person?' in pagination['prev']
+        assert 'page[number]=1' in pagination['prev']
+        assert '/api/person?' in pagination['next']
+        assert 'page[number]=3' in pagination['next']
+        assert len(document['data']) == 10
 
     def test_sorted_pagination(self):
         """Tests that pagination is consistent with sorting.
@@ -1153,33 +1102,26 @@ class TestPagination(ManagerTestBase):
         # IDs 40 through 31, so the second page should have Person instances
         # with IDs 30 through 21.
         people = document['data']
-        people_ids = [int(p['id']) for p in people]
-        self.assertEqual(list(range(30, 20, -1)), people_ids)
-
+        assert list(range(30, 20, -1)) == [int(p['id']) for p in people]
         # The pagination links should include not only the pagination query
         # parameters, but also the same sorting query parameters from the
         # client's original quest.
         pagination = document['links']
-        first = unquote(pagination['first'])
-        last = unquote(pagination['last'])
-        next_ = unquote(pagination['next'])
-        prev = unquote(pagination['prev'])
+        assert '/api/person?' in pagination['first']
+        assert 'page[number]=1' in pagination['first']
+        assert 'sort=-id' in pagination['first']
 
-        self.assertIn('/api/person?', first)
-        self.assertIn('page[number]=1', first)
-        self.assertIn('sort=-id', first)
+        assert '/api/person?' in pagination['last']
+        assert 'page[number]=4' in pagination['last']
+        assert 'sort=-id' in pagination['last']
 
-        self.assertIn('/api/person?', last)
-        self.assertIn('page[number]=4', last)
-        self.assertIn('sort=-id', last)
+        assert '/api/person?' in pagination['prev']
+        assert 'page[number]=1' in pagination['prev']
+        assert 'sort=-id' in pagination['prev']
 
-        self.assertIn('/api/person?', prev)
-        self.assertIn('page[number]=1', prev)
-        self.assertIn('sort=-id', prev)
-
-        self.assertIn('/api/person?', next_)
-        self.assertIn('page[number]=3', next_)
-        self.assertIn('sort=-id', next_)
+        assert '/api/person?' in pagination['next']
+        assert 'page[number]=3' in pagination['next']
+        assert 'sort=-id' in pagination['next']
 
     def test_client_size_only(self):
         """Tests that a request that specifies only the page size returns the
@@ -1197,20 +1139,15 @@ class TestPagination(ManagerTestBase):
         query_string = {'page[size]': 5}
         response = self.app.get('/api/person', query_string=query_string)
         document = loads(response.data)
-
         pagination = document['links']
-        first = unquote(pagination['first'])
-        last = unquote(pagination['last'])
-        next_ = unquote(pagination['next'])
-
-        self.assertIn('/api/person?', first)
-        self.assertIn('page[number]=1', first)
-        self.assertIn('/api/person?', last)
-        self.assertIn('page[number]=5', last)
-        self.assertIs(pagination['prev'], None)
-        self.assertIn('/api/person?', next_)
-        self.assertIn('page[number]=2', next_)
-        self.assertEqual(len(document['data']), 5)
+        assert '/api/person?' in pagination['first']
+        assert 'page[number]=1' in pagination['first']
+        assert '/api/person?' in pagination['last']
+        assert 'page[number]=5' in pagination['last']
+        assert pagination['prev'] is None
+        assert '/api/person?' in pagination['next']
+        assert 'page[number]=2' in pagination['next']
+        assert len(document['data']) == 5
 
     def test_short_page(self):
         """Tests that a request that specifies the last page may get fewer
@@ -1229,17 +1166,14 @@ class TestPagination(ManagerTestBase):
         response = self.app.get('/api/person', query_string=query_string)
         document = loads(response.data)
         pagination = document['links']
-        first = unquote(pagination['first'])
-        last = unquote(pagination['last'])
-        prev = unquote(pagination['prev'])
-        self.assertIn('/api/person?', first)
-        self.assertIn('page[number]=1', first)
-        self.assertIn('/api/person?', last)
-        self.assertIn('page[number]=3', last)
-        self.assertIn('/api/person?', prev)
-        self.assertIn('page[number]=2', prev)
-        self.assertIs(pagination['next'], None)
-        self.assertEqual(len(document['data']), 5)
+        assert '/api/person?' in pagination['first']
+        assert 'page[number]=1' in pagination['first']
+        assert '/api/person?' in pagination['last']
+        assert 'page[number]=3' in pagination['last']
+        assert '/api/person?' in pagination['prev']
+        assert 'page[number]=2' in pagination['prev']
+        assert pagination['next'] is None
+        assert len(document['data']) == 5
 
     def test_server_page_size(self):
         """Tests for setting the default page size on the server side.
@@ -1258,19 +1192,15 @@ class TestPagination(ManagerTestBase):
         response = self.app.get('/api2/person', query_string=query_string)
         document = loads(response.data)
         pagination = document['links']
-        first = unquote(pagination['first'])
-        last = unquote(pagination['last'])
-        next_ = unquote(pagination['next'])
-        prev = unquote(pagination['prev'])
-        self.assertIn('/api2/person?', first)
-        self.assertIn('page[number]=1', first)
-        self.assertIn('/api2/person?', last)
-        self.assertIn('page[number]=5', last)
-        self.assertIn('/api2/person?', prev)
-        self.assertIn('page[number]=2', prev)
-        self.assertIn('/api2/person?', next_)
-        self.assertIn('page[number]=4', next_)
-        self.assertEqual(len(document['data']), 5)
+        assert '/api2/person?' in pagination['first']
+        assert 'page[number]=1' in pagination['first']
+        assert '/api2/person?' in pagination['last']
+        assert 'page[number]=5' in pagination['last']
+        assert '/api2/person?' in pagination['prev']
+        assert 'page[number]=2' in pagination['prev']
+        assert '/api2/person?' in pagination['next']
+        assert 'page[number]=4' in pagination['next']
+        assert len(document['data']) == 5
 
     def test_disable_pagination(self):
         """Tests for disabling default pagination on the server side.
@@ -1288,10 +1218,10 @@ class TestPagination(ManagerTestBase):
         response = self.app.get('/api2/person')
         document = loads(response.data)
         pagination = document['links']
-        self.assertNotIn('first', pagination)
-        self.assertNotIn('last', pagination)
-        self.assertNotIn('prev', pagination)
-        self.assertNotIn('next', pagination)
+        assert 'first' not in pagination
+        assert 'last' not in pagination
+        assert 'prev' not in pagination
+        assert 'next' not in pagination
         assert len(document['data']) == 25
 
     def test_disable_pagination_ignore_client(self):
@@ -1312,11 +1242,11 @@ class TestPagination(ManagerTestBase):
         response = self.app.get('/api2/person', query_string=query_string)
         document = loads(response.data)
         pagination = document['links']
-        self.assertNotIn('first', pagination)
-        self.assertNotIn('last', pagination)
-        self.assertNotIn('prev', pagination)
-        self.assertNotIn('next', pagination)
-        self.assertEqual(len(document['data']), 25)
+        assert 'first' not in pagination
+        assert 'last' not in pagination
+        assert 'prev' not in pagination
+        assert 'next' not in pagination
+        assert len(document['data']) == 25
         # TODO Should there be an error here?
 
     def test_max_page_size(self):
@@ -1376,26 +1306,18 @@ class TestPagination(ManagerTestBase):
         people = [self.Person() for i in range(25)]
         self.session.add_all(people)
         self.session.commit()
-
         query_string = {'page[number]': 4, 'page[size]': 3}
         response = self.app.get('/api/person', query_string=query_string)
-
         links = response.headers['Link'].split(',')
-        # Sort Link header strings by relationship name.
-        links = sorted(links, key=lambda s: REL_REGEX.search(s).group(1))
-        first, last, next_, prev = map(unquote, links)
-
-        self.assertIn('/api/person?', first)
-        self.assertIn('/api/person?', last)
-        self.assertIn('/api/person?', prev)
-        self.assertIn('/api/person?', next_)
-
-        self.assertIn('page[size]=3', first)
-        self.assertIn('page[size]=3', last)
-        self.assertIn('page[size]=3', prev)
-        self.assertIn('page[size]=3', next_)
-
-        self.assertIn('page[number]=1', first)
-        self.assertIn('page[number]=9', last)
-        self.assertIn('page[number]=3', prev)
-        self.assertIn('page[number]=5', next_)
+        assert any(all(('/api/person?' in l, 'page[number]=1' in l,
+                        'page[size]=3' in l, 'rel="first"' in l))
+                   for l in links)
+        assert any(all(('/api/person?' in l, 'page[number]=9' in l,
+                        'page[size]=3' in l, 'rel="last"' in l))
+                   for l in links)
+        assert any(all(('/api/person?' in l, 'page[number]=3' in l,
+                        'page[size]=3' in l, 'rel="prev"' in l))
+                   for l in links)
+        assert any(all(('/api/person?' in l, 'page[number]=5' in l,
+                        'page[size]=3' in l, 'rel="next"' in l))
+                   for l in links)

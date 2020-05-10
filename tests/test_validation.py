@@ -18,6 +18,8 @@ to test that it captures validation errors and returns them to the
 client.
 
 """
+import sys
+
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
@@ -26,10 +28,21 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import validates
 
+# for SAValidation package on pypi.python.org
+try:
+    import savalidation as _sav
+    import savalidation.validators as sav
+except:
+    has_savalidation = False
+else:
+    sav_version = tuple(int(n) for n in _sav.VERSION.split('.'))
+    has_savalidation = True
+
 from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import loads
 from .helpers import ManagerTestBase
+from .helpers import skip_unless
 
 
 class CoolValidationError(Exception):
@@ -50,9 +63,9 @@ class TestSimpleValidation(ManagerTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Create APIs for the validated models."""
-        super(TestSimpleValidation, self).setUp()
+        super(TestSimpleValidation, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -103,36 +116,28 @@ class TestSimpleValidation(ManagerTestBase):
         response.
 
         """
-        data = {
-            'data': {
-                'type': 'person',
-                'attributes': {
-                    'age': 1
-                }
-            }
-        }
+        data = dict(data=dict(type='person', age=1))
         response = self.app.post('/api/person', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
         document = loads(response.data)
         person = document['data']
-        self.assertEqual(person['attributes']['age'], 1)
+        assert person['attributes']['age'] == 1
 
     def test_create_invalid(self):
         """Tests that an attempt to create an invalid resource yields an error
         response.
 
         """
-        data = {
-            'data': {
-                'type': 'person',
-                'attributes': {
-                    'age': -1
-                }
-            }
-        }
+        data = dict(data=dict(type='person', age=-1))
         response = self.app.post('/api/person', data=dumps(data))
-        check_sole_error(response, 400, ['age', 'Must be between'])
-        self.assertEqual(self.session.query(self.Person).count(), 0)
+        assert response.status_code == 400
+        document = loads(response.data)
+        errors = document['errors']
+        error = errors[0]
+        assert 'validation' in error['title'].lower()
+        assert 'must be between' in error['detail'].lower()
+        # Check that the person was not created.
+        assert self.session.query(self.Person).count() == 0
 
     def test_update_valid(self):
         """Tests that an attempt to update a resource with valid data yields no
@@ -142,15 +147,12 @@ class TestSimpleValidation(ManagerTestBase):
         person = self.Person(id=1, age=1)
         self.session.add(person)
         self.session.commit()
-        data = {
-            'data': {
-                'id': '1',
-                'type': 'person',
-                'attributes': {
-                    'age': 2
+        data = {'data':
+                    {'id': '1',
+                     'type': 'person',
+                     'attributes': {'age': 2}
+                     }
                 }
-            }
-        }
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 204
         assert person.age == 2
@@ -163,15 +165,12 @@ class TestSimpleValidation(ManagerTestBase):
         person = self.Person(id=1, age=1)
         self.session.add(person)
         self.session.commit()
-        data = {
-            'data': {
-                'id': '1',
-                'type': 'person',
-                'attributes': {
-                    'age': -1
+        data = {'data':
+                    {'id': '1',
+                     'type': 'person',
+                     'attributes': {'age': -1}
+                     }
                 }
-            }
-        }
         response = self.app.patch('/api/person/1', data=dumps(data))
         check_sole_error(response, 400, ['age', 'Must be between'])
         # Check that the person was not updated.
@@ -254,3 +253,121 @@ class TestSimpleValidation(ManagerTestBase):
         assert 'empty title not allowed' in error['detail'].lower()
         # Check that the relationship was not updated.
         assert person.articles == []
+
+
+@skip_unless(has_savalidation and sav_version >= (0, 2) and
+             sys.version < (3, 0, 0), 'savalidation not found.')
+class TestSAValidation(ManagerTestBase):
+    """Tests for validation errors raised by the ``savalidation`` package. For
+    more information about this package, see `its PyPI page
+    <http://pypi.python.org/pypi/SAValidation>`_.
+
+    """
+
+    def setup(self):
+        """Create APIs for the validated models."""
+        super(TestSAValidation, self).setup()
+
+        class Person(self.Base, _sav.ValidationMixin):
+            __tablename__ = 'person'
+            id = Column(Integer, primary_key=True)
+            email = Column(Unicode)
+
+            sav.validates_presence_of('email')
+            sav.validates_email('email')
+
+        self.Person = Person
+        self.Base.metadata.create_all()
+        exceptions = [_sav.ValidationError]
+        self.manager.create_api(Person, methods=['POST', 'PATCH'],
+                                validation_exceptions=exceptions)
+
+    def test_create_valid(self):
+        """Tests that an attempt to create a valid resource yields no error
+        response.
+
+        """
+        data = dict(data=dict(type='person', email=u'example@example.com'))
+        response = self.app.post('/api/person', data=dumps(data))
+        assert response.status_code == 201
+        document = loads(response.data)
+        person = document['data']
+        assert person['attributes']['email'] == u'example@example.com'
+
+    def test_create_absent(self):
+        """Tests that an attempt to create a resource with a missing required
+        attribute yields an error response.
+
+        """
+        data = dict(data=dict(type='person'))
+        response = self.app.post('/api/person', data=dumps(data))
+        assert response.status_code == 400
+        document = loads(response.data)
+        errors = document['errors']
+        error = errors[0]
+        assert 'validation' in error['title'].lower()
+        assert 'email' in error['detail'].lower()
+        # Check that the person was not created.
+        assert self.session.query(self.Person).count() == 0
+
+    def test_create_invalid(self):
+        """Tests that an attempt to create an invalid resource yields an error
+        response.
+
+        """
+        data = {'data':
+                    {'type': 'person',
+                     'attributes': {'email': 'bogus'}
+                     }
+                }
+        response = self.app.post('/api/person', data=dumps(data))
+        assert response.status_code == 400
+        document = loads(response.data)
+        errors = document['errors']
+        error = errors[0]
+        assert 'validation' in error['title'].lower()
+        assert 'email' in error['detail'].lower()
+        # Check that the person was not created.
+        assert self.session.query(self.Person).count() == 0
+
+    def test_update_valid(self):
+        """Tests that an attempt to update a resource with valid data yields no
+        error response.
+
+        """
+        person = self.Person(id=1, email=u'example@example.com')
+        self.session.add(person)
+        self.session.commit()
+        data = {'data':
+                    {'id': '1',
+                     'type': 'person',
+                     'attributes': {'email': u'foo@example.com'}
+                     }
+                }
+        response = self.app.patch('/api/person/1', data=dumps(data))
+        assert response.status_code == 204
+        assert person.email == u'foo@example.com'
+
+    def test_update_invalid(self):
+        """Tests that an attempt to update a resource with invalid data yields
+        an error response.
+
+        """
+        person = self.Person(id=1, email=u'example@example.com')
+        self.session.add(person)
+        self.session.commit()
+        data = {'data':
+                    {'id': '1',
+                     'type': 'person',
+                     'attributes': {'email': 'bogus'}
+                     }
+                }
+        response = self.app.patch('/api/person/1', data=dumps(data))
+        assert response.status_code == 400
+        document = loads(response.data)
+        errors = document['errors']
+        error = errors[0]
+        assert 'validation' in error['title'].lower()
+        assert 'email' in error['detail'].lower()
+        # Check that the person was not updated.
+        assert person.email == u'example@example.com'

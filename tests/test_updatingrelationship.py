@@ -23,9 +23,6 @@ from sqlalchemy import Integer
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
-from flask_restless import ProcessingException
-
-from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import ManagerTestBase
 
@@ -36,8 +33,8 @@ class TestAdding(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestAdding, self).setUp()
+    def setup(self):
+        super(TestAdding, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -262,7 +259,6 @@ class TestAdding(ManagerTestBase):
         self.session.commit()
 
         has_run = []
-
         def enable_flag(*args, **kw):
             has_run.append(True)
 
@@ -275,32 +271,6 @@ class TestAdding(ManagerTestBase):
         assert response.status_code == 204
         assert has_run == [True]
 
-    def test_postprocessor_no_commit_on_error(self):
-        """Tests that a processing exception causes the session to be
-        flushed but not committed.
-
-        """
-
-        person = self.Person(id=1)
-        article = self.Article(id=1)
-        self.session.add_all([article, person])
-        self.session.commit()
-
-        def raise_error(**kw):
-            raise ProcessingException(status=500)
-
-        postprocessors = {'POST_RELATIONSHIP': [raise_error]}
-        self.manager.create_api(self.Person, postprocessors=postprocessors,
-                                url_prefix='/api2', methods=['PATCH'])
-        data = {'data': [{'type': 'article', 'id': '1'}]}
-        response = self.app.post('/api2/person/1/relationships/articles',
-                                 data=dumps(data))
-
-        assert response.status_code == 500
-        assert article.author is person
-        self.session.rollback()
-        assert article.author is not person
-
 
 class TestDeleting(ManagerTestBase):
     """Tests for deleting a link from a resource's to-many relationship via the
@@ -308,8 +278,8 @@ class TestDeleting(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestDeleting, self).setUp()
+    def setup(self):
+        super(TestDeleting, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -537,7 +507,6 @@ class TestDeleting(ManagerTestBase):
         self.session.commit()
 
         has_run = []
-
         def enable_flag(was_deleted=None, *args, **kw):
             has_run.append(was_deleted)
 
@@ -551,33 +520,6 @@ class TestDeleting(ManagerTestBase):
         assert response.status_code == 204
         assert has_run == [True]
 
-    def test_postprocessor_no_commit_on_error(self):
-        """Tests that a processing exception causes the session to be
-        flushed but not committed.
-
-        """
-        person = self.Person(id=1)
-        article = self.Article(id=1)
-        article.author = person
-        self.session.add_all([article, person])
-        self.session.commit()
-
-        def raise_error(**kw):
-            raise ProcessingException(status=500)
-
-        postprocessors = {'DELETE_RELATIONSHIP': [raise_error]}
-        self.manager.create_api(self.Person, postprocessors=postprocessors,
-                                url_prefix='/api2', methods=['PATCH'],
-                                allow_delete_from_to_many_relationships=True)
-        data = {'data': [{'type': 'article', 'id': '1'}]}
-        response = self.app.delete('/api2/person/1/relationships/articles',
-                                   data=dumps(data))
-
-        assert response.status_code == 500
-        assert article.author is not person
-        self.session.rollback()
-        assert article.author is person
-
 
 class TestUpdatingToMany(ManagerTestBase):
     """Tests for updating a resource's to-many relationship via the
@@ -585,8 +527,8 @@ class TestUpdatingToMany(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestUpdatingToMany, self).setUp()
+    def setup(self):
+        super(TestUpdatingToMany, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -819,7 +761,6 @@ class TestUpdatingToMany(ManagerTestBase):
         self.session.commit()
 
         has_run = []
-
         def enable_flag(*args, **kw):
             has_run.append(True)
 
@@ -832,32 +773,6 @@ class TestUpdatingToMany(ManagerTestBase):
                                   data=dumps(data))
         assert response.status_code == 204
         assert has_run == [True]
-
-    def test_postprocessor_no_commit_on_error(self):
-        """Tests that a postprocessor gets executing when deleting from
-        a to-many relationship.
-
-        """
-        person = self.Person(id=1)
-        article = self.Article(id=1)
-        self.session.add_all([article, person])
-        self.session.commit()
-
-        def raise_error(**kw):
-            raise ProcessingException(status=500)
-
-        postprocessors = {'PATCH_RELATIONSHIP': [raise_error]}
-        self.manager.create_api(self.Person, postprocessors=postprocessors,
-                                url_prefix='/api2', methods=['PATCH'],
-                                allow_to_many_replacement=True)
-        data = {'data': [{'type': 'article', 'id': '1'}]}
-        response = self.app.patch('/api2/person/1/relationships/articles',
-                                  data=dumps(data))
-
-        assert response.status_code == 500
-        assert article.author is person
-        self.session.rollback()
-        assert article.author is not person
 
     def test_set_null(self):
         """Tests that an attempt to set a null value on a to-many
@@ -880,8 +795,8 @@ class TestUpdatingToOne(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestUpdatingToOne, self).setUp()
+    def setup(self):
+        super(TestUpdatingToOne, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -1008,8 +923,9 @@ class TestUpdatingToOne(ManagerTestBase):
         data = dumps(data)
         response = self.app.patch('/api/article/1/relationships/author',
                                   data=data)
-        check_sole_error(response, 404, ['No resource', 'found', 'type',
-                                         'person', 'ID', 'bogus'])
+        print(response.data)
+        assert response.status_code == 404
+        # TODO check error message here
 
     def test_empty_request(self):
         """Test that attempting to delete from a relationship URL with no data

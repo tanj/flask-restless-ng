@@ -43,7 +43,8 @@ VERSION_RE = r"^__version__ = ['\"]([^'\"]*)['\"]"
 
 #: The installation requirements for Flask-Restless. Flask-SQLAlchemy is not
 #: required, so the user must install it explicitly.
-REQUIREMENTS = ['flask>=0.10', 'sqlalchemy>=0.8', 'python-dateutil>2.2']
+REQUIREMENTS = ['flask>=0.10', 'sqlalchemy>=0.8', 'python-dateutil>2.2',
+                'mimerender>=0.5.2']
 
 #: The absolute path to this file.
 HERE = os.path.abspath(os.path.dirname(__file__))
@@ -77,8 +78,7 @@ setup(
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
-        ('License :: OSI Approved :: '
-         'GNU Affero General Public License v3 or later (AGPLv3+)'),
+        'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
@@ -87,13 +87,11 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
         'Topic :: Database :: Front-Ends',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
-    description=('Flask extension for generating a JSON API interface for'
-                 ' SQLAlchemy models'),
+    description='A Flask extension for easy ReSTful API generation',
     download_url='https://pypi.python.org/pypi/Flask-Restless',
     install_requires=REQUIREMENTS,
     include_package_data=True,
@@ -102,9 +100,9 @@ setup(
     long_description=__doc__,
     name='Flask-Restless',
     platforms='any',
-    packages=find_packages(exclude=['tests', 'tests.*']),
-    test_suite='tests',
-    tests_require=['unittest2'],
+    packages=find_packages(),
+    test_suite='nose.collector',
+    tests_require=['nose'],
     url='https://github.com/jfinkels/flask-restless',
     version=find_version('flask_restless', '__init__.py'),
     zip_safe=False

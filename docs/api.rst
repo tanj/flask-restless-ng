@@ -1,7 +1,7 @@
 API
 ===
 
-.. module:: flask_restless
+.. module:: flask.ext.restless
 
 This part of the documentation documents all the public classes and functions
 in Flask-Restless.
@@ -10,16 +10,12 @@ The API Manager class
 ---------------------
 
 .. autoclass:: APIManager
-   :members: init_app, create_api, create_api_blueprint
 
-.. autoclass:: IllegalArgumentError
+   .. automethod:: init_app
 
+   .. automethod:: create_api
 
-Search helper functions
------------------------
-
-.. autofunction:: register_operator
-
+   .. automethod:: create_api_blueprint
 
 Global helper functions
 -----------------------
@@ -34,25 +30,18 @@ Global helper functions
 
 .. autofunction:: url_for(model, instid=None, relationname=None, relationinstid=None, _apimanager=None, **kw)
 
-Serialization and deserialization
----------------------------------
+Serialization helpers
+---------------------
 
-.. autoclass:: DefaultSerializer
-   :members: serialize, serialize_many
+.. autofunction:: simple_serialize(instance, only=None)
 
-.. autoclass:: DefaultDeserializer
-   :members: deserialize
+.. autoclass:: Serializer
+
+.. autoclass:: Deserializer
 
 .. autoclass:: SerializationException
 
 .. autoclass:: DeserializationException
-   :members: message, detail, status
-
-.. autofunction:: simple_serialize
-
-.. autofunction:: simple_serialize_many
-
-.. autoclass:: MultipleExceptions
 
 
 Pre- and postprocessor helpers

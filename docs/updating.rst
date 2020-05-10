@@ -1,3 +1,5 @@
+.. _updating:
+
 Updating resources
 ==================
 
@@ -5,8 +7,8 @@ For the purposes of concreteness in this section, suppose we have executed the
 following code on the server::
 
     from flask import Flask
-    from flask_sqlalchemy import SQLAlchemy
-    from flask_restless import APIManager
+    from flask.ext.sqlalchemy import SQLAlchemy
+    from flask.ext.restless import APIManager
 
     app = Flask(__name__)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
@@ -48,7 +50,7 @@ To update an existing resource, the request
 yields a :http:statuscode:`204` response.
 
 If you set the ``allow_to_many_replacement`` keyword argument of
-:meth:`.APIManager.create_api` to ``True``, you can replace a to-many
+:meth:`APIManager.create_api` to ``True``, you can replace a to-many
 relationship entirely by making a request to update a resource. To update a
 to-many relationship, the request
 

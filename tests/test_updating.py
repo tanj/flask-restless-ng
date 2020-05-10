@@ -21,19 +21,17 @@ specification.
 from __future__ import division
 
 from datetime import datetime
-from unittest2 import skip
-
 try:
-    from flask_sqlalchemy import SQLAlchemy
+    from flask.ext.sqlalchemy import SQLAlchemy
 except ImportError:
     has_flask_sqlalchemy = False
 else:
     has_flask_sqlalchemy = True
+
 from sqlalchemy import Column
 from sqlalchemy import Date
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
-from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import Time
 from sqlalchemy import Unicode
@@ -42,9 +40,9 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
-from flask_restless import APIManager
-from flask_restless import JSONAPI_MIMETYPE
-from flask_restless import ProcessingException
+from flask.ext.restless import APIManager
+from flask.ext.restless import CONTENT_TYPE
+from flask.ext.restless import ProcessingException
 
 from .helpers import BetterJSONEncoder as JSONEncoder
 from .helpers import check_sole_error
@@ -54,27 +52,26 @@ from .helpers import loads
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
 from .helpers import ManagerTestBase
-from .helpers import raise_s_exception as raise_exception
+from .helpers import skip
 
 
 class TestUpdating(ManagerTestBase):
     """Tests for updating resources."""
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestUpdating, self).setUp()
+        super(TestUpdating, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
             id = Column(Integer, primary_key=True)
             author = relationship('Person', backref=backref('articles'))
             author_id = Column(Integer, ForeignKey('person.id'))
-            type = Column(Unicode)
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -83,9 +80,6 @@ class TestUpdating(ManagerTestBase):
             bedtime = Column(Time)
             date_created = Column(Date)
             birth_datetime = Column(DateTime)
-
-            def foo(self):
-                return u'foo'
 
         # This example comes from the SQLAlchemy documentation.
         #
@@ -112,17 +106,9 @@ class TestUpdating(ManagerTestBase):
             def radius(cls):
                 return cls.length / 2
 
-        class Tag(self.Base):
-            __tablename__ = 'tag'
-            id = Column(Integer, primary_key=True)
-            name = Column(Unicode)
-            updated_at = Column(DateTime, server_default=func.now(),
-                                onupdate=func.current_timestamp())
-
         self.Article = Article
         self.Interval = Interval
         self.Person = Person
-        self.Tag = Tag
         self.Base.metadata.create_all()
         self.manager.create_api(Article, methods=['PATCH'])
         self.manager.create_api(Interval, methods=['PATCH'])
@@ -267,9 +253,9 @@ class TestUpdating(ManagerTestBase):
         self.session.commit()
         data = dict(data=dict(type='person', id='1'))
         response = self.app.patch('/api/person/1', data=dumps(data),
-                                  content_type=JSONAPI_MIMETYPE)
+                                  content_type=CONTENT_TYPE)
         assert response.status_code == 204
-        assert response.headers['Content-Type'] == JSONAPI_MIMETYPE
+        assert response.headers['Content-Type'] == CONTENT_TYPE
 
     def test_no_content_type(self):
         """Tests that the server responds with :http:status:`415` if the
@@ -283,7 +269,7 @@ class TestUpdating(ManagerTestBase):
         response = self.app.patch('/api/person/1', data=dumps(data),
                                   content_type=None)
         assert response.status_code == 415
-        assert response.headers['Content-Type'] == JSONAPI_MIMETYPE
+        assert response.headers['Content-Type'] == CONTENT_TYPE
 
     def test_msie8(self):
         """Tests for compatibility with Microsoft Internet Explorer 8.
@@ -866,107 +852,12 @@ class TestUpdating(ManagerTestBase):
         # Check that the article was not updated to None.
         assert article.author is person
 
-    def test_serialization_exception(self):
-        """Tests that serialization exceptions are caught when
-        responding with content.
-
-        A representation of the modified resource is returned to the
-        client when an update causes additional changes in the resource
-        in ways other than those specified by the client.
-
-        """
-        tag = self.Tag(id=1)
-        self.session.add(tag)
-        self.session.commit()
-        self.manager.create_api(self.Tag, methods=['PATCH'],
-                                serializer_class=raise_exception)
-        data = {
-            'data': {
-                'type': 'tag',
-                'id': '1',
-                'attributes': {
-                    'name': u'foo'
-                }
-            }
-        }
-        response = self.app.patch('/api/tag/1', data=dumps(data))
-        check_sole_error(response, 500, ['Failed to serialize', 'type', 'tag',
-                                         'ID', '1'])
-
-    def test_dont_assign_to_method(self):
-        """Tests that if a certain method is to be included in a
-        resource, that method is not assigned to when updating the
-        resource.
-
-        For more information, see issue #253.
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-        self.manager.create_api(self.Person, additional_attributes=['foo'],
-                                url_prefix='/api2', methods=['PATCH'])
-        data = {
-            'data': {
-                'type': 'person',
-                'id': '1',
-                'attributes': {
-                    'foo': u'bar'
-                }
-            }
-        }
-        response = self.app.patch('/api2/person/1', data=dumps(data))
-        check_sole_error(response, 400, ['does not have', 'field', 'foo'])
-        assert person.foo != u'bar'
-        assert person.foo() == u'foo'
-
-    def test_special_field_names(self):
-        """Test that an attribute can have the name "type".
-
-        For more information, see issue #559.
-
-        """
-        article = self.Article(id=1, type=u'foo')
-        self.session.add(article)
-        self.session.commit()
-        data = {
-            'data': {
-                'type': 'article',
-                'id': '1',
-                'attributes': {
-                    'type': u'bar'
-                }
-            }
-        }
-        response = self.app.patch('/api/article/1', data=dumps(data))
-        assert response.status_code == 204
-        assert article.type == u'bar'
-
-    def test_integer_id_error_message(self):
-        """Test that an integer ID in the JSON request yields an error.
-
-        For more information, see GitHub issue #534.
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-        data = {
-            'data': {
-                'type': 'person',
-                'id': 1,
-            }
-        }
-        response = self.app.patch('/api/person/1', data=dumps(data))
-        check_sole_error(response, 409, ['"id" element', 'resource object',
-                                         'must be a JSON string'])
-
 
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""
 
-    def setUp(self):
-        super(TestProcessors, self).setUp()
+    def setup(self):
+        super(TestProcessors, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -1102,38 +993,209 @@ class TestProcessors(ManagerTestBase):
         assert person.name == 'bar'
         assert temp == ['baz']
 
-    def test_postprocessor_no_commit_on_error(self):
-        """Tests that a processing exception causes the session to be
-        flushed but not committed.
+
+class TestAssociationProxy(ManagerTestBase):
+    """Tests for creating an object with a relationship using an association
+    proxy.
+
+    """
+
+    def setup(self):
+        """Creates the database, the :class:`~flask.Flask` object, the
+        :class:`~flask.ext.restless.manager.APIManager` for that application,
+        and creates the ReSTful API endpoints for the models used in the test
+        methods.
 
         """
+        super(TestAssociationProxy, self).setup()
 
-        def raise_error(**kw):
-            raise ProcessingException(status=500)
+        class Article(self.Base):
+            __tablename__ = 'article'
+            id = Column(Integer, primary_key=True)
+            tags = association_proxy('articletags', 'tag',
+                                     creator=lambda tag: ArticleTag(tag=tag))
 
-        person = self.Person(id=1, name=u'foo')
-        self.session.add(person)
+        class ArticleTag(self.Base):
+            __tablename__ = 'articletag'
+            article_id = Column(Integer, ForeignKey('article.id'),
+                                primary_key=True)
+            article = relationship(Article, backref=backref('articletags'))
+            tag_id = Column(Integer, ForeignKey('tag.id'), primary_key=True)
+            tag = relationship('Tag')
+            # This is extra information that only appears in this association
+            # object.
+            extrainfo = Column(Unicode)
+            # TODO this dummy column is required to create an API for this
+            # object.
+            id = Column(Integer)
+
+        class Tag(self.Base):
+            __tablename__ = 'tag'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode)
+
+        self.Article = Article
+        self.ArticleTag = ArticleTag
+        self.Tag = Tag
+        self.Base.metadata.create_all()
+        self.manager.create_api(Article, methods=['PATCH'])
+        # HACK Need to create APIs for these other models because otherwise
+        # we're not able to create the link URLs to them.
+        #
+        # TODO Fix this by simply not creating links to related models for
+        # which no API has been made.
+        self.manager.create_api(Tag)
+        self.manager.create_api(ArticleTag)
+
+    def test_update(self):
+        """Test for updating a model with a many-to-many relation that uses an
+        association object to allow extra data to be stored in the association
+        table.
+
+        For more info, see issue #166.
+
+        """
+        article = self.Article(id=1)
+        tag1 = self.Tag(id=1)
+        tag2 = self.Tag(id=2)
+        self.session.add_all([article, tag1, tag2])
         self.session.commit()
-
-        postprocessors = dict(PATCH_RESOURCE=[raise_error])
-        self.manager.create_api(self.Person, methods=['PATCH'],
-                                postprocessors=postprocessors)
-
+        self.manager.create_api(self.Article, methods=['PATCH'],
+                                url_prefix='/api2',
+                                allow_to_many_replacement=True)
         data = {
             'data': {
+                'type': 'article',
                 'id': '1',
-                'type': 'person',
-                'attributes': {
-                    'name': u'bar'
+                'relationships': {
+                    'tags': {
+                        'data': [
+                            {'type': 'tag', 'id': '1'},
+                            {'type': 'tag', 'id': '2'}
+                        ]
+                    }
                 }
             }
         }
-        response = self.app.patch('/api/person/1', data=dumps(data))
+        response = self.app.patch('/api2/article/1', data=dumps(data))
+        assert response.status_code == 204
+        assert [tag1, tag2] == sorted(article.tags, key=lambda t: t.id)
 
-        assert response.status_code == 500
-        assert person.name == u'bar'
-        self.session.rollback()
-        assert person.name == u'foo'
+    @skip('Not sure how to implement this.')
+    def test_scalar(self):
+        """Tests for updating an association proxy to scalars as a list
+        attribute instead of a link object.
+
+        """
+        # article = self.Article(id=1)
+        # tag1 = self.Tag(name='foo')
+        # tag2 = self.Tag(name='bar')
+        # article.tags = [tag1, tag2]
+        # self.session.add_all([article, tag1, tag2])
+        # self.session.commit()
+        # tag_names = ['foo', 'bar']
+        # data = dict(data=dict(type='article', id='1', tag_names=tag_names))
+        # response = self.app.patch('/api/article/1', data=dumps(data))
+        # assert response.status_code == 204
+        # assert ['foo', 'bar'] == article.tag_names
+        assert False, 'Not implemented'
+
+    @skip('Not sure how to implement this.')
+    def test_dictionary_collection(self):
+        """Tests for updating a dictionary based collection."""
+        assert False, 'Not implemented'
+
+    @skip('Not sure how to implement this.')
+    def test_extra_info(self):
+        """Tests for adding a link in a to-many relationship with some extra
+        information to be stored in the association object.
+
+        For more information, see issue #166.
+
+        """
+        article = self.Article(id=1)
+        tag = self.Tag(id=1)
+        self.session.add_all([article, tag])
+        self.session.commit()
+        self.manager.create_api(self.Article, methods=['PATCH'],
+                                url_prefix='/api2',
+                                allow_to_many_replacement=True)
+        data = {
+            'data': {
+                'type': 'article',
+                'id': '1',
+                'relationships': {
+                    'tags': {
+                        'data': [{'type': 'tag', 'id': '1',
+                                  'extrainfo': 'foo'}]
+                    }
+                }
+            }
+        }
+        response = self.app.patch('/api2/article/1', data=dumps(data))
+        assert response.status_code == 204
+        assert article.tags == [tag]
+        assert self.session.query(self.ArticleTag).first().extrainfo == 'foo'
+
+    @skip('Not sure how to implement this.')
+    def test_extra_info_patch_relationship_url(self):
+        """Tests for replacing links in a to-many relationship with some extra
+        information to be stored in the association object when making a
+        request to a relationship URL.
+
+        For more information, see issue #166.
+
+        """
+        article = self.Article(id=1)
+        tag = self.Tag(id=1)
+        self.session.add_all([article, tag])
+        self.session.commit()
+        data = {
+            'data': {
+                'id': '1',
+                'type': 'tag',
+                'attributes': {
+                    'extrainfo': 'foo'
+                }
+            }
+        }
+        data = dumps(data)
+        response = self.app.patch('/api/article/1/relationships/tags',
+                                  data=data)
+        assert response.status_code == 204
+        assert article.tags == [tag]
+        assert self.session.query(self.ArticleTag).first().extrainfo == 'foo'
+
+    @skip('Not sure how to implement this.')
+    def test_extra_info_post_relationship_url(self):
+        """Tests for adding a link in a to-many relationship with some extra
+        information to be stored in the association object when making a
+        request to a relationship URL.
+
+        For more information, see issue #166.
+
+        """
+        article = self.Article(id=1)
+        tag = self.Tag(id=1)
+        self.session.add_all([article, tag])
+        self.session.commit()
+        data = {
+            'data': [
+                {
+                    'id': '1',
+                    'type': 'tag',
+                    'attributes': {
+                        'extrainfo': 'foo'
+                    }
+                }
+            ]
+        }
+        data = dumps(data)
+        response = self.app.post('/api/article/1/relationships/tags',
+                                 data=data)
+        assert response.status_code == 204
+        assert article.tags == [tag]
+        assert self.session.query(self.ArticleTag).first().extrainfo == 'foo'
 
 
 class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
@@ -1142,9 +1204,9 @@ class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSQLAlchemy, self).setUp()
+        super(TestFlaskSQLAlchemy, self).setup()
         # HACK During testing, we don't want the session to expire, so that we
         # can access attributes of model instances *after* a request has been
         # made (that is, after Flask-Restless does its work and commits the

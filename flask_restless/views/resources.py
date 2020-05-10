@@ -16,21 +16,19 @@ The main class in this module, :class:`API`, is a
 SQLAlchemy models compatible with the JSON API specification.
 
 """
-import sys
-
 from flask import json
 from flask import request
 from werkzeug.exceptions import BadRequest
 
 from ..helpers import collection_name
 from ..helpers import get_by
-from ..helpers import get_model
 from ..helpers import get_related_model
 from ..helpers import has_field
 from ..helpers import is_like_list
-from ..helpers import is_relationship
 from ..helpers import primary_key_value
-from ..helpers import string_to_datetime
+from ..helpers import strings_to_datetimes
+from ..serialization import ClientGeneratedIDNotAllowed
+from ..serialization import ConflictingType
 from ..serialization import DeserializationException
 from ..serialization import SerializationException
 from .base import APIBase
@@ -38,42 +36,10 @@ from .base import error
 from .base import error_response
 from .base import errors_from_serialization_exceptions
 from .base import errors_response
-from .base import jsonpify
+from .base import JSONAPI_VERSION
 from .base import MultipleExceptions
 from .base import SingleKeyError
 from .helpers import changes_on_update
-
-STRING_TYPES = (str, )
-
-if sys.version_info < (3, 0):
-    STRING_TYPES += (unicode, )  # noqa
-
-
-def errors_from_deserialization_exceptions(exceptions, included=False):
-    """Returns an errors response object, as returned by
-    :func:`errors_response`, representing the given list of
-    :exc:`DeserializationException` objects.
-
-    If `included` is ``True``, this indicates that the exceptions were
-    raised by attempts to serialize resources included in a compound
-    document; this modifies the error message for the exceptions a bit.
-
-    """
-
-    def _to_error(exception):
-        detail = exception.message()
-        status = exception.status
-        return error(status=status, detail=detail)
-
-    errors = list(map(_to_error, exceptions))
-    # Workaround: if there is only one error, assign the status code of
-    # that error object to be the status code of the actual HTTP
-    # response.
-    if len(errors) == 1:
-        status = errors[0]['status']
-    else:
-        status = 400
-    return errors_response(status, errors)
 
 
 class API(APIBase):
@@ -137,7 +103,7 @@ class API(APIBase):
         1 via the ``articles`` relationship. In general, this method is called
         on requests of the form::
 
-            GET /<collection>/<resourceid>/<relationname>/<relatedresourceid>
+            GET /<collection_name>/<resource_id>/<relation_name>/<related_resource_id>
 
         """
         for preprocessor in self.preprocessors['GET_RELATED_RESOURCE']:
@@ -163,23 +129,14 @@ class API(APIBase):
         # Get the resource with the specified ID.
         primary_resource = get_by(self.session, self.model, resource_id,
                                   self.primary_key)
-        # We check here whether there actually is an instance of the
-        # correct type and ID.
-        #
-        # The first condition is True exactly when there is no row in
-        # the table with the given primary key value. The second is True
-        # in the special case when the resource exists but is a subclass
-        # of the actual model for this API; this may happen if the model
-        # is a polymorphic subclass of another class using a single
-        # inheritance table.
-        found_model = get_model(primary_resource)
-        if primary_resource is None or found_model is not self.model:
-            detail = 'no resource of type {0} with ID {1}'
-            detail = detail.format(collection_name(self.model), resource_id)
+        # Return an error if there is no resource with the specified ID.
+        if primary_resource is None:
+            detail = 'No instance with ID {0}'.format(resource_id)
             return error_response(404, detail=detail)
-        # Return an error if the specified relation does not exist on
-        # the model.
-        if not is_relationship(self.model, relation_name):
+        # Get the model of the specified relation.
+        related_model = get_related_model(self.model, relation_name)
+        # Return an error if no such relation exists.
+        if related_model is None:
             detail = 'No such relation: {0}'.format(relation_name)
             return error_response(404, detail=detail)
         # Return an error if the relation is a to-one relation.
@@ -198,7 +155,6 @@ class API(APIBase):
             detail = detail.format(related_resource_id)
             return error_response(404, detail=detail)
         # Get the related resource by its ID.
-        related_model = get_related_model(self.model, relation_name)
         resource = get_by(self.session, related_model, related_resource_id)
         return self._get_resource_helper(resource,
                                          primary_resource=primary_resource,
@@ -226,9 +182,7 @@ class API(APIBase):
 
         """
         try:
-            filters, sort, group_by, single, ignorecase = \
-                self.collection_parameters(resource_id=resource_id,
-                                           relation_name=relation_name)
+            filters, sort, group_by, single = self._collection_parameters()
         except (TypeError, ValueError, OverflowError) as exception:
             detail = 'Unable to decode filter objects as JSON list'
             return error_response(400, cause=exception, detail=detail)
@@ -257,33 +211,20 @@ class API(APIBase):
         # Get the resource with the specified ID.
         primary_resource = get_by(self.session, self.model, resource_id,
                                   self.primary_key)
-        # We check here whether there actually is an instance of the
-        # correct type and ID.
-        #
-        # The first condition is True exactly when there is no row in
-        # the table with the given primary key value. The second is True
-        # in the special case when the resource exists but is a subclass
-        # of the actual model for this API; this may happen if the model
-        # is a polymorphic subclass of another class using a single
-        # inheritance table.
-        found_model = get_model(primary_resource)
-        if primary_resource is None or found_model is not self.model:
-            detail = 'no resource of type {0} with ID {1}'
-            detail = detail.format(collection_name(self.model), resource_id)
-            return error_response(404, detail=detail)
-        # Return an error if the specified relation does not exist on
-        # the model.
-        if not is_relationship(self.model, relation_name):
-            detail = 'No such relation: {0}'.format(relation_name)
+        if primary_resource is None:
+            detail = 'No resource with ID {0}'.format(resource_id)
             return error_response(404, detail=detail)
         # Get the model of the specified relation.
+        related_model = get_related_model(self.model, relation_name)
+        if related_model is None:
+            detail = 'No such relation: {0}'.format(relation_name)
+            return error_response(404, detail=detail)
         # Determine if this is a to-one or a to-many relation.
         if is_like_list(primary_resource, relation_name):
             return self._get_collection_helper(resource=primary_resource,
                                                relation_name=relation_name,
                                                filters=filters, sort=sort,
                                                group_by=group_by,
-                                               ignorecase=ignorecase,
                                                single=single)
         else:
             resource = getattr(primary_resource, relation_name)
@@ -320,18 +261,8 @@ class API(APIBase):
         # Get the resource with the specified ID.
         resource = get_by(self.session, self.model, resource_id,
                           self.primary_key)
-        # We check here whether there actually is an instance of the
-        # correct type and ID.
-        #
-        # The first condition is True exactly when there is no row in
-        # the table with the given primary key value. The second is True
-        # in the special case when the resource exists but is a subclass
-        # of the actual model for this API; this may happen if the model
-        # is a polymorphic subclass of another class using a single
-        # inheritance table.
-        if resource is None or get_model(resource) is not self.model:
-            detail = 'no resource of type {0} with ID {1}'
-            detail = detail.format(collection_name(self.model), resource_id)
+        if resource is None:
+            detail = 'No resource with ID {0}'.format(resource_id)
             return error_response(404, detail=detail)
         return self._get_resource_helper(resource)
 
@@ -354,8 +285,7 @@ class API(APIBase):
 
         """
         try:
-            filters, sort, group_by, single, ignorecase = \
-                self.collection_parameters()
+            filters, sort, group_by, single = self._collection_parameters()
         except (TypeError, ValueError, OverflowError) as exception:
             detail = 'Unable to decode filter objects as JSON list'
             return error_response(400, cause=exception, detail=detail)
@@ -368,8 +298,7 @@ class API(APIBase):
                          single=single)
 
         return self._get_collection_helper(filters=filters, sort=sort,
-                                           group_by=group_by, single=single,
-                                           ignorecase=ignorecase)
+                                           group_by=group_by, single=single)
 
     def get(self, resource_id, relation_name, related_resource_id):
         """Returns the JSON document representing a resource or a collection of
@@ -421,32 +350,18 @@ class API(APIBase):
         was_deleted = False
         instance = get_by(self.session, self.model, resource_id,
                           self.primary_key)
-        found_model = get_model(instance)
-        # If no instance of the model exists with the specified instance ID,
-        # return a 404 response.
-        #
-        # The first condition is True exactly when there is no row in
-        # the table with the given primary key value. The second is True
-        # in the special case when the resource exists but is a subclass
-        # of the actual model for this API; this may happen if the model
-        # is a polymorphic subclass of another class using a single
-        # inheritance table.
-        if instance is None or found_model is not self.model:
-            detail = 'No resource found with type {0} and ID {1}'
-            detail = detail.format(collection_name(self.model), resource_id)
+        if instance is None:
+            detail = 'No resource found with ID {0}'.format(resource_id)
             return error_response(404, detail=detail)
         self.session.delete(instance)
         was_deleted = len(self.session.deleted) > 0
-        # Flush all changes to database but do not commit the transaction
-        # so that postprocessors have the chance to roll it back
-        self.session.flush()
+        self.session.commit()
         for postprocessor in self.postprocessors['DELETE_RESOURCE']:
             postprocessor(was_deleted=was_deleted)
-        self.session.commit()
         if not was_deleted:
             detail = 'There was no instance to delete.'
             return error_response(404, detail=detail)
-        return jsonpify({}), 204
+        return {}, 204
 
     def post(self):
         """Creates a new resource based on request data.
@@ -457,36 +372,38 @@ class API(APIBase):
         """
         # try to read the parameters for the model from the body of the request
         try:
-            document = json.loads(request.get_data()) or {}
+            data = json.loads(request.get_data()) or {}
         except (BadRequest, TypeError, ValueError, OverflowError) as exception:
             detail = 'Unable to decode data'
             return error_response(400, cause=exception, detail=detail)
         # apply any preprocessors to the POST arguments
         for preprocessor in self.preprocessors['POST_RESOURCE']:
-            preprocessor(data=document)
+            preprocessor(data=data)
         # Convert the dictionary representation into an instance of the
         # model.
         try:
-            instance = self.deserializer.deserialize(document)
+            instance = self.deserialize(data)
             self.session.add(instance)
-            # Flush all changes to database but do not commit the transaction
-            # so that postprocessors have the chance to roll it back
-            self.session.flush()
-        # This also catches subclasses of `DeserializationException`,
-        # like ClientGeneratedIDNotAllowed and ConflictingType.
+            self.session.commit()
+        except ClientGeneratedIDNotAllowed as exception:
+            detail = exception.message()
+            return error_response(403, cause=exception, detail=detail)
+        except ConflictingType as exception:
+            detail = exception.message()
+            return error_response(409, cause=exception, detail=detail)
         except DeserializationException as exception:
-            return errors_from_deserialization_exceptions([exception])
-        except MultipleExceptions as e:
-            return errors_from_deserialization_exceptions(e.exceptions)
+            detail = exception.message()
+            return error_response(400, cause=exception, detail=detail)
         except self.validation_exceptions as exception:
             return self._handle_validation_exception(exception)
-        only = self.sparse_fields.get(self.collection_name)
+        fields_for_this = self.sparse_fields.get(self.collection_name)
         # Get the dictionary representation of the new instance as it
         # appears in the database.
         try:
-            result = self.serializer.serialize(instance, only=only)
+            data = self.serialize(instance, only=fields_for_this)
         except SerializationException as exception:
-            return errors_from_serialization_exceptions([exception])
+            detail = 'Failed to serialize object'
+            return error_response(400, cause=exception, detail=detail)
         # Determine the value of the primary key for this instance and
         # encode URL-encode it (in case it is a Unicode string).
         primary_key = primary_key_value(instance, as_string=True)
@@ -495,6 +412,8 @@ class API(APIBase):
         url = '{0}/{1}'.format(request.base_url, primary_key)
         # Provide that URL in the Location header in the response.
         headers = dict(Location=url)
+        # Wrap the resulting object or list of objects under a 'data' key.
+        result = {'jsonapi': {'version': JSONAPI_VERSION}, 'data': data}
         # Include any requested resources in a compound document.
         try:
             included = self.get_all_inclusions(instance)
@@ -506,12 +425,11 @@ class API(APIBase):
             return errors_from_serialization_exceptions(e.exceptions,
                                                         included=True)
         if included:
-            result['included'].extend(included)
+            result['included'] = included
         status = 201
         for postprocessor in self.postprocessors['POST_RESOURCE']:
             postprocessor(result=result)
-        self.session.commit()
-        return jsonpify(result), status, headers
+        return result, status, headers
 
     def _update_instance(self, instance, data, resource_id):
         """Updates the attributes and relationships of the specified instance
@@ -584,7 +502,7 @@ class API(APIBase):
                 # If any of the requested to-many linkage objects do not exist,
                 # return an error response.
                 if not_found:
-                    detail = 'No resource of type {0} found with ID {1}'
+                    detail = 'No object of type {0} found with ID {1}'
                     errors = [error(detail=detail.format(t, i))
                               for t, i in not_found]
                     return errors_response(404, errors)
@@ -607,7 +525,7 @@ class API(APIBase):
                     # If the to-one relationship resource does not
                     # exist, return an error response.
                     if inst is None:
-                        detail = 'No resource of type {0} found with ID {1}'
+                        detail = 'No object of type {0} found with ID {1}'
                         detail = detail.format(type_, id_)
                         return error_response(404, detail=detail)
                     newvalue = inst
@@ -631,16 +549,13 @@ class API(APIBase):
                 return error_response(400, detail=detail)
         # Special case: if there are any dates, convert the string form of the
         # date into an instance of the Python ``datetime`` object.
-        data = dict((k, string_to_datetime(self.model, k, v))
-                    for k, v in data.items())
+        data = strings_to_datetimes(self.model, data)
         # Finally, update each attribute individually.
         try:
             if data:
                 for field, value in data.items():
                     setattr(instance, field, value)
-            # Flush all changes to database but do not commit the transaction
-            # so that postprocessors have the chance to roll it back
-            self.session.flush()
+            self.session.commit()
         except self.validation_exceptions as exception:
             return self._handle_validation_exception(exception)
 
@@ -667,43 +582,26 @@ class API(APIBase):
         # Get the instance on which to set the new attributes.
         instance = get_by(self.session, self.model, resource_id,
                           self.primary_key)
-        found_model = get_model(instance)
         # If no instance of the model exists with the specified instance ID,
         # return a 404 response.
-        #
-        # The first condition is True exactly when there is no row in
-        # the table with the given primary key value. The second is True
-        # in the special case when the resource exists but is a subclass
-        # of the actual model for this API; this may happen if the model
-        # is a polymorphic subclass of another class using a single
-        # inheritance table.
-        if instance is None or found_model is not self.model:
-            detail = 'No resource found with type {0} and ID {1}'
-            detail = detail.format(collection_name(self.model), resource_id)
+        if instance is None:
+            detail = 'No instance with ID {0} in model {1}'.format(resource_id,
+                                                                   self.model)
             return error_response(404, detail=detail)
         # Unwrap the data from the collection name key.
         data = data.pop('data', {})
         if 'type' not in data:
-            detail = 'Missing "type" element'
-            return error_response(400, detail=detail)
+            message = 'Must specify correct data type'
+            return error_response(400, detail=message)
         if 'id' not in data:
-            detail = 'Missing resource ID'
-            return error_response(400, detail=detail)
+            message = 'Must specify resource ID'
+            return error_response(400, detail=message)
         type_ = data.pop('type')
         id_ = data.pop('id')
-        # Check that the requested type matches the expected collection
-        # name for this model.
         if type_ != self.collection_name:
-            detail = 'expected type {0}, not {1}'
-            detail = detail.format(self.collection_name, type_)
-            return error_response(409, detail=detail)
-        # Check that the ID is a string, as required by the "Resource
-        # Object: Identification" section of the JSON API specification.
-        if not isinstance(id_, STRING_TYPES):
-            detail = ('The "id" element of the resource object must be a JSON'
-                      ' string: {0}')
-            detail = detail.format(id_)
-            return error_response(409, detail=detail)
+            message = ('Type must be {0}, not'
+                       ' {1}').format(self.collection_name, type_)
+            return error_response(409, detail=message)
         if id_ != resource_id:
             message = 'ID must be {0}, not {1}'.format(resource_id, id_)
             return error_response(409, detail=message)
@@ -716,11 +614,7 @@ class API(APIBase):
         # updates specified by the request, we must return 200 OK and a
         # representation of the modified resource.
         if self.changes_on_update:
-            only = self.sparse_fields.get(self.collection_name)
-            try:
-                result = self.serializer.serialize(instance, only=only)
-            except SerializationException as exception:
-                return errors_from_serialization_exceptions([exception])
+            result = dict(data=self.serialize(instance))
             status = 200
         else:
             result = dict()
@@ -728,5 +622,4 @@ class API(APIBase):
         # Perform any necessary postprocessing.
         for postprocessor in self.postprocessors['PATCH_RESOURCE']:
             postprocessor(result=result)
-        self.session.commit()
-        return jsonpify(result), status
+        return result, status

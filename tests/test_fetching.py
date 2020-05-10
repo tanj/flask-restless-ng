@@ -18,30 +18,19 @@ Flask-Restless meets the minimum requirements of the JSON API
 specification.
 
 """
-from itertools import product
 from operator import itemgetter
-from unittest2 import skip
-# In Python 3...
-try:
-    from urllib.parse import unquote
-# In Python 2...
-except ImportError:
-    from urlparse import unquote
 
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
-from sqlalchemy import func
 from sqlalchemy import Integer
-from sqlalchemy import select
 from sqlalchemy import Unicode
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
-from flask_restless import APIManager
-from flask_restless import DefaultSerializer
-from flask_restless import ProcessingException
+from flask.ext.restless import APIManager
+from flask.ext.restless import ProcessingException
+from flask.ext.restless import simple_serialize
 
 from .helpers import check_sole_error
 from .helpers import dumps
@@ -50,46 +39,28 @@ from .helpers import loads
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
 from .helpers import ManagerTestBase
+from .helpers import skip
 
 
 class TestFetchCollection(ManagerTestBase):
 
-    def setUp(self):
-        super(TestFetchCollection, self).setUp()
+    def setup(self):
+        super(TestFetchCollection, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
-            age = Column(Integer)
             name = Column(Unicode)
-
-            @hybrid_property
-            def is_minor(self):
-                if not hasattr(self, 'age') or self.age is None:
-                    return False
-                return self.age <= 18
 
         class Article(self.Base):
             __tablename__ = 'article'
             id = Column(Integer, primary_key=True)
             author_id = Column(Integer, ForeignKey('person.id'))
             author = relationship('Person', backref=backref('articles'))
-            comments = relationship('Comment')
-
-            @hybrid_property
-            def num_comments(self):
-                return len(self.comments)
-
-            @num_comments.expression
-            def num_comments(cls):
-                return select([func.count(self.Comment.id)]).\
-                    where(self.Comment.article_id == cls.id).\
-                    label('numcomments')
 
         class Comment(self.Base):
             __tablename__ = 'comment'
             id = Column(Integer, primary_key=True)
-            article_id = Column(Integer, ForeignKey(Article.id))
 
             @classmethod
             def query(cls):
@@ -216,33 +187,12 @@ class TestFetchCollection(ManagerTestBase):
         article3.author = person2
         self.session.add_all([person1, person2, article1, article2, article3])
         self.session.commit()
-        query_string = {'group': 'author.name'}
-        response = self.app.get('/api/article', query_string=query_string)
+        response = self.app.get('/api/article?group=author.name')
         document = loads(response.data)
         articles = document['data']
         author_ids = sorted(article['relationships']['author']['data']['id']
                             for article in articles)
         assert ['1', '2'] == author_ids
-
-    def test_group_by_mutiple_relationship_attributes(self):
-        """Tests for grouping results by multiple fields of a related model."""
-        names = [u'foo', u'bar']
-        ages = [10, 20]
-        # There are two people with each combination of name and age.
-        for i, (name, age) in enumerate(product(names, ages), start=1):
-            person1 = self.Person(id=2 * i - 1, name=name, age=age)
-            person2 = self.Person(id=2 * i, name=name, age=age)
-            article1 = self.Article(author=person1)
-            article2 = self.Article(author=person2)
-            self.session.add_all([article1, article2, person1, person2])
-        self.session.commit()
-        query_string = {'group': ','.join(['author.name', 'author.age'])}
-        response = self.app.get('/api/article', query_string=query_string)
-        document = loads(response.data)
-        articles = document['data']
-        author_ids = sorted(article['relationships']['author']['data']['id']
-                            for article in articles)
-        assert ['2', '4', '6', '8'] == author_ids
 
     def test_pagination_links_empty_collection(self):
         """Tests that pagination links work correctly for an empty
@@ -255,14 +205,12 @@ class TestFetchCollection(ManagerTestBase):
         document = loads(response.data)
         pagination = document['links']
         base_url = '{0}?'.format(base_url)
-        first = unquote(pagination['first'])
-        self.assertIn(base_url, first)
-        self.assertIn('page[number]=1', first)
-        last = unquote(pagination['last'])
-        self.assertIn(base_url, last)
-        self.assertIn('page[number]=1', last)
-        self.assertIs(pagination['prev'], None)
-        self.assertIs(pagination['next'], None)
+        assert base_url in pagination['first']
+        assert 'page[number]=1' in pagination['first']
+        assert base_url in pagination['last']
+        assert 'page[number]=1' in pagination['last']
+        assert pagination['prev'] is None
+        assert pagination['next'] is None
 
     def test_link_headers_empty_collection(self):
         """Tests that :http:header:`Link` headers work correctly for an
@@ -271,25 +219,24 @@ class TestFetchCollection(ManagerTestBase):
         """
         base_url = '/api/person'
         response = self.app.get(base_url)
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         base_url = '{0}?'.format(base_url)
         # There should be exactly two, one for the first page and one
         # for the last page; there are no previous or next pages, so
         # there cannot be any valid Link headers for them.
         links = response.headers['Link'].split(',')
-        self.assertEqual(len(links), 2)
+        assert len(links) == 2
         # Decide which link is for the first page and which is for the last.
-        first, last = links
-        if 'last' in links[0]:
-            first, last = last, first
-        first = unquote(first)
-        self.assertIn(base_url, first)
-        self.assertIn('rel="first"', first)
-        self.assertIn('page[number]=1', first)
-        last = unquote(last)
-        self.assertIn(base_url, last)
-        self.assertIn('rel="last"', last)
-        self.assertIn('page[number]=1', last)
+        if 'first' in links[0]:
+            first, last = links
+        else:
+            last, first = links
+        assert base_url in first
+        assert 'rel="first"' in first
+        assert 'page[number]=1' in first
+        assert base_url in last
+        assert 'rel="last"' in last
+        assert 'page[number]=1' in last
 
     def test_pagination_with_query_parameter(self):
         """Tests that the URLs produced for pagination links include
@@ -332,97 +279,11 @@ class TestFetchCollection(ManagerTestBase):
         # TODO In Python 2.7 or later, this should be a set literal.
         assert set(['1', '4']) == set(person_ids[:2])
 
-    def test_sorting_hybrid_property(self):
-        """Test for sorting on a hybrid property."""
-        person1 = self.Person(id=1, age=10)
-        person2 = self.Person(id=2, age=20)
-        self.session.add_all([person1, person2])
-        self.session.commit()
-
-        query_string = {'sort': 'is_minor'}
-        response = self.app.get('/api/person', query_string=query_string)
-        document = loads(response.data)
-        people = document['data']
-        self.assertEqual(['2', '1'], list(map(itemgetter('id'), people)))
-
-        query_string = {'sort': '-is_minor'}
-        response = self.app.get('/api/person', query_string=query_string)
-        document = loads(response.data)
-        people = document['data']
-        self.assertEqual(['1', '2'], list(map(itemgetter('id'), people)))
-
-    def test_sorting_hybrid_expression(self):
-        """Test for sorting on a hybrid property with a separate expression.
-
-        For more information, see GitHub issue #562.
-
-        """
-        article1 = self.Article(id=1)
-        article2 = self.Article(id=2)
-        comment = self.Comment(id=1)
-        article1.comments = [comment]
-        self.session.add_all([article1, article2, comment])
-        self.session.commit()
-
-        query_string = {'sort': 'num_comments'}
-        response = self.app.get('/api/article', query_string=query_string)
-        document = loads(response.data)
-        articles = document['data']
-        self.assertEqual(['2', '1'], list(map(itemgetter('id'), articles)))
-
-        query_string = {'sort': '-num_comments'}
-        response = self.app.get('/api/article', query_string=query_string)
-        document = loads(response.data)
-        articles = document['data']
-        self.assertEqual(['1', '2'], list(map(itemgetter('id'), articles)))
-
-    def test_case_insensitive_sorting(self):
-        """Test for case-insensitive sorting.
-
-        For more information, see GitHub issue #626.
-
-        """
-        person1 = self.Person(id=1, name=u'B')
-        person2 = self.Person(id=2, name=u'a')
-        self.session.add_all([person1, person2])
-        self.session.commit()
-        query_string = {'sort': 'name', 'ignorecase': 1}
-        response = self.app.get('/api/person', query_string=query_string)
-        # The ASCII character code for the uppercase letter 'B' comes
-        # before the ASCII character code for the lowercase letter 'a',
-        # but in case-insensitive sorting, the 'a' should precede the
-        # 'B'.
-        document = loads(response.data)
-        person1, person2 = document['data']
-        self.assertEqual(person1['id'], u'2')
-        self.assertEqual(person1['attributes']['name'], u'a')
-        self.assertEqual(person2['id'], u'1')
-        self.assertEqual(person2['attributes']['name'], u'B')
-
-    def test_case_insensitive_sorting_relationship_attributes(self):
-        """Test for case-insensitive sorting on relationship attributes."""
-        person1 = self.Person(id=1, name=u'B')
-        person2 = self.Person(id=2, name=u'a')
-        article1 = self.Article(id=1, author=person1)
-        article2 = self.Article(id=2, author=person2)
-        self.session.add_all([article1, article2, person1, person2])
-        self.session.commit()
-        query_string = {'sort': 'author.name', 'ignorecase': 1}
-        response = self.app.get('/api/article', query_string=query_string)
-        # The ASCII character code for the uppercase letter 'B' comes
-        # before the ASCII character code for the lowercase letter 'a',
-        # but in case-insensitive sorting, the 'a' should precede the
-        # 'B'.
-        document = loads(response.data)
-        article1, article2 = document['data']
-        self.assertEqual(article1['id'], u'2')
-        self.assertEqual(article2['id'], u'1')
-
 
 class TestFetchResource(ManagerTestBase):
 
-    def setUp(self):
-        super(TestFetchResource, self).setUp()
+    def setup(self):
+        super(TestFetchResource, self).setup()
 
         # class Article(self.Base):
         #     __tablename__ = 'article'
@@ -541,8 +402,8 @@ class TestFetchResource(ManagerTestBase):
 
 class TestFetchRelation(ManagerTestBase):
 
-    def setUp(self):
-        super(TestFetchRelation, self).setUp()
+    def setup(self):
+        super(TestFetchRelation, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -594,32 +455,23 @@ class TestFetchRelation(ManagerTestBase):
         self.session.add(person)
         self.session.add_all(articles)
         self.session.commit()
-
         params = {'page[number]': 3, 'page[size]': 2}
         base_url = '/api/person/1/articles'
         response = self.app.get(base_url, query_string=params)
         document = loads(response.data)
-
         articles = document['data']
-        article_types = [article['type'] for article in articles]
-        self.assertTrue(all(t == 'article' for t in article_types))
-        self.assertEqual(['4', '5'], sorted(map(itemgetter('id'), articles)))
-
+        assert all(article['type'] == 'article' for article in articles)
+        assert ['4', '5'] == sorted(article['id'] for article in articles)
         pagination = document['links']
         base_url = '{0}?'.format(base_url)
-        first = unquote(pagination['first'])
-        last = unquote(pagination['last'])
-        next_ = unquote(pagination['next'])
-        prev = unquote(pagination['prev'])
-
-        self.assertIn(base_url, first)
-        self.assertIn('page[number]=1', first)
-        self.assertIn(base_url, last)
-        self.assertIn('page[number]=5', last)
-        self.assertIn(base_url, prev)
-        self.assertIn('page[number]=2', prev)
-        self.assertIn(base_url, next_)
-        self.assertIn('page[number]=4', next_)
+        assert base_url in pagination['first']
+        assert 'page[number]=1' in pagination['first']
+        assert base_url in pagination['last']
+        assert 'page[number]=5' in pagination['last']
+        assert base_url in pagination['prev']
+        assert 'page[number]=2' in pagination['prev']
+        assert base_url in pagination['next']
+        assert 'page[number]=4' in pagination['next']
 
     def test_to_many_sorting(self):
         """Tests for sorting a to-many relation."""
@@ -661,8 +513,8 @@ class TestFetchRelation(ManagerTestBase):
 
 class TestFetchRelatedResource(ManagerTestBase):
 
-    def setUp(self):
-        super(TestFetchRelatedResource, self).setUp()
+    def setup(self):
+        super(TestFetchRelatedResource, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -766,8 +618,8 @@ class TestFetchRelatedResource(ManagerTestBase):
 class TestFetchRelationship(ManagerTestBase):
     """Tests for fetching from a relationship URL."""
 
-    def setUp(self):
-        super(TestFetchRelationship, self).setUp()
+    def setup(self):
+        super(TestFetchRelationship, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -810,8 +662,8 @@ class TestFetchRelationship(ManagerTestBase):
 class TestServerSparseFieldsets(ManagerTestBase):
     """Tests for specifying default sparse fieldsets on the server."""
 
-    def setUp(self):
-        super(TestServerSparseFieldsets, self).setUp()
+    def setup(self):
+        super(TestServerSparseFieldsets, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -910,8 +762,7 @@ class TestServerSparseFieldsets(ManagerTestBase):
     #     actual_ids = sorted(article['id'] for article in included)
     #     assert expected_ids == actual_ids
     #     assert all('title' not in article for article in included)
-    #     assert all('comments' in article['relationships']
-    #                for article in included)
+    #     assert all('comments' in article['relationships'] for article in included)
 
     def test_only_as_objects(self):
         """Test for specifying included columns as SQLAlchemy column objects
@@ -1013,8 +864,7 @@ class TestServerSparseFieldsets(ManagerTestBase):
         Technically, a resource's attribute MAY contain any valid JSON object,
         so this is allowed by the `JSON API specification`_.
 
-        .. _JSON API specification:
-           http://jsonapi.org/format/#document-structure-resource-object-attributes
+        .. _JSON API specification: http://jsonapi.org/format/#document-structure-resource-object-attributes
 
         """
         article = self.Article(id=1)
@@ -1024,21 +874,19 @@ class TestServerSparseFieldsets(ManagerTestBase):
         self.session.add_all([article, comment1, comment2])
         self.session.commit()
 
-        class MySerializer(DefaultSerializer):
-
-            def serialize(self, *args, **kw):
-                result = super(MySerializer, self).serialize(*args, **kw)
-                if 'attributes' not in result['data']:
-                    result['data']['attributes'] = {}
-                result['data']['attributes']['foo'] = 'foo'
-                return result
+        def add_foo(instance, *args, **kw):
+            result = simple_serialize(instance)
+            if 'attributes' not in result:
+                result['attributes'] = {}
+            result['attributes']['foo'] = 'foo'
+            return result
 
         self.manager.create_api(self.Article,
                                 additional_attributes=['first_comment'])
         # Ensure that the comment object has a custom serialization
         # function, so we can test that it is serialized using this
         # function in particular.
-        self.manager.create_api(self.Comment, serializer_class=MySerializer)
+        self.manager.create_api(self.Comment, serializer=add_foo)
         # HACK Need to create an API for this model because otherwise
         # we're not able to create the link URLs to them.
         self.manager.create_api(self.Person)
@@ -1124,14 +972,14 @@ class TestServerSparseFieldsets(ManagerTestBase):
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestProcessors, self).setUp()
+        super(TestProcessors, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -1590,14 +1438,14 @@ class TestProcessors(ManagerTestBase):
 class TestDynamicRelationships(ManagerTestBase):
     """Tests for fetching resources from dynamic to-many relationships."""
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestDynamicRelationships, self).setUp()
+        super(TestDynamicRelationships, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -1671,15 +1519,100 @@ class TestDynamicRelationships(ManagerTestBase):
         assert all(article['type'] == 'article' for article in articles)
 
 
+class TestAssociationProxy(ManagerTestBase):
+    """Tests for getting an object with a relationship using an association
+    proxy.
+
+    """
+
+    def setup(self):
+        """Creates the database, the :class:`~flask.Flask` object, the
+        :class:`~flask.ext.restless.manager.APIManager` for that application,
+        and creates the ReSTful API endpoints for the models used in the test
+        methods.
+
+        """
+        super(TestAssociationProxy, self).setup()
+
+        class Article(self.Base):
+            __tablename__ = 'article'
+            id = Column(Integer, primary_key=True)
+            tags = association_proxy('articletags', 'tag',
+                                     creator=lambda tag: ArticleTag(tag=tag))
+            # tag_names = association_proxy('tags', 'name',
+            #                               creator=lambda name: Tag(name=name))
+
+        class ArticleTag(self.Base):
+            __tablename__ = 'articletag'
+            article_id = Column(Integer, ForeignKey('article.id'),
+                                primary_key=True)
+            article = relationship(Article, backref=backref('articletags'))
+            tag_id = Column(Integer, ForeignKey('tag.id'), primary_key=True)
+            tag = relationship('Tag')
+            # TODO this dummy column is required to create an API for this
+            # object.
+            id = Column(Integer)
+
+        class Tag(self.Base):
+            __tablename__ = 'tag'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode)
+
+        self.Article = Article
+        self.Tag = Tag
+        self.Base.metadata.create_all()
+        self.manager.create_api(Article)
+        # HACK Need to create APIs for these other models because otherwise
+        # we're not able to create the link URLs to them.
+        #
+        # TODO Fix this by simply not creating links to related models for
+        # which no API has been made.
+        self.manager.create_api(Tag)
+        self.manager.create_api(ArticleTag)
+
+    def test_fetch(self):
+        """Test for fetching a resource that has a many-to-many relation that
+        uses an association proxy.
+
+        """
+        article = self.Article(id=1)
+        tag = self.Tag(id=1)
+        article.tags.append(tag)
+        self.session.add_all([article, tag])
+        self.session.commit()
+        response = self.app.get('/api/article/1')
+        document = loads(response.data)
+        article = document['data']
+        tags = article['relationships']['tags']['data']
+        assert ['1'] == sorted(tag['id'] for tag in tags)
+
+    @skip('Not sure how to implement this.')
+    def test_scalar(self):
+        """Tests for fetching an association proxy to scalars as a list
+        attribute instead of a link object.
+
+        """
+        article = self.Article(id=1)
+        tag1 = self.Tag(name=u'foo')
+        tag2 = self.Tag(name=u'bar')
+        article.tags = [tag1, tag2]
+        self.session.add_all([article, tag1, tag2])
+        self.session.commit()
+        response = self.app.get('/api/article/1')
+        document = loads(response.data)
+        article = document['data']
+        assert ['bar', 'foo'] == sorted(article['attributes']['tag_names'])
+
+
 class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
     """Tests for fetching resources defined as Flask-SQLAlchemy models
     instead of pure SQLAlchemy models.
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSQLAlchemy, self).setUp()
+        super(TestFlaskSQLAlchemy, self).setup()
 
         class Person(self.db.Model):
             id = self.db.Column(self.db.Integer, primary_key=True)

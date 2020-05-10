@@ -10,36 +10,34 @@
 # License version 3 and under the 3-clause BSD license. For more
 # information, see LICENSE.AGPL and LICENSE.BSD.
 """Unit tests for metadata in server responses."""
-from unittest2 import skip
-
 from sqlalchemy import Column
 from sqlalchemy import Integer
-from sqlalchemy import Unicode
 
-from flask_restless import JSONAPI_MIMETYPE
+from flask.ext.restless import CONTENT_TYPE
 
 from .helpers import loads
 from .helpers import ManagerTestBase
+from .helpers import skip
 
 
 class TestMetadata(ManagerTestBase):
     """Tests for receiving metadata in responses."""
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`.
 
         """
-        super(TestMetadata, self).setUp()
+        super(TestMetadata, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
-            name = Column(Unicode)
 
         self.Person = Person
         self.Base.metadata.create_all()
+        self.manager.create_api(Person)
 
     def test_total(self):
         """Tests that a request for (a subset of) all instances of a model
@@ -49,7 +47,6 @@ class TestMetadata(ManagerTestBase):
         people = [self.Person() for n in range(15)]
         self.session.add_all(people)
         self.session.commit()
-        self.manager.create_api(self.Person)
         response = self.app.get('/api/person')
         document = loads(response.data)
         assert document['meta']['total'] == 15
@@ -57,35 +54,7 @@ class TestMetadata(ManagerTestBase):
     @skip('Not sure whether this should be implemented')
     def test_http_headers(self):
         """Tests that HTTP headers appear as elements in the JSON metadata."""
-        self.manager.create_api(self.Person)
         response = self.app.get('/api/person')
         document = loads(response.data)
         meta = document['meta']
-        assert meta['Content-Type'] == JSONAPI_MIMETYPE
-
-    def test_model_info(self):
-        """Test for getting schema metadata.
-
-        For more information, see GitHub issue #625.
-
-        """
-        self.manager.create_api(self.Person)
-        response = self.app.get('/api')
-        document = loads(response.data)
-        info = document['meta']['modelinfo']
-        self.assertEqual(list(info.keys()), ['person'])
-        self.assertEqual(sorted(info['person']), ['primarykey', 'url'])
-        self.assertEqual(info['person']['primarykey'], 'id')
-        self.assertTrue(info['person']['url'].endswith('/api/person'))
-
-    def test_model_info_custom_primary_key(self):
-        """Test for getting schema metadata with custom primary key.
-
-        For more information, see GitHub issue #625.
-
-        """
-        self.manager.create_api(self.Person, primary_key='name')
-        response = self.app.get('/api')
-        document = loads(response.data)
-        info = document['meta']['modelinfo']
-        self.assertEqual(info['person']['primarykey'], 'name')
+        assert meta['Content-Type'] == CONTENT_TYPE

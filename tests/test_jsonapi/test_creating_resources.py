@@ -39,14 +39,14 @@ class TestCreatingResources(ManagerTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestCreatingResources, self).setUp()
+        super(TestCreatingResources, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -85,19 +85,15 @@ class TestCreatingResources(ManagerTestBase):
         For more information, see the `Sparse Fieldsets`_ section
         of the JSON API specification.
 
-        .. _Sparse Fieldsets:
-           http://jsonapi.org/format/#fetching-sparse-fieldsets
-
+        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
         """
-        data = {
-            'data': {
-                'type': 'person',
-                'attributes': {
-                    'name': 'foo',
-                    'age': 99,
+        data = {'data':
+                    {'type': 'person',
+                     'attributes':
+                         {'name': 'foo',
+                          'age': 99}
+                     }
                 }
-            }
-        }
         query_string = {'fields[person]': 'name'}
         response = self.app.post('/api/person', data=dumps(data),
                                  query_string=query_string)
@@ -118,25 +114,22 @@ class TestCreatingResources(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
 
-        .. _Inclusion of Related Resources:
-           http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
 
         """
         comment = self.Comment(id=1)
         self.session.add(comment)
         self.session.commit()
-        data = {
-            'data': {
-                'type': 'person',
-                'relationships': {
-                    'comments': {
-                        'data': [
-                            {'type': 'comment', 'id': 1}
-                        ]
-                    }
+        data = {'data':
+                    {'type': 'person',
+                     'relationships':
+                         {'comments':
+                              {'data':
+                                   [{'type': 'comment', 'id': 1}]
+                               }
+                          }
+                     }
                 }
-            }
-        }
         query_string = dict(include='comments')
         response = self.app.post('/api/person', data=dumps(data),
                                  query_string=query_string)
@@ -157,26 +150,20 @@ class TestCreatingResources(ManagerTestBase):
         .. _Creating Resources: http://jsonapi.org/format/#crud-creating
 
         """
-        data = {
-            'data': {
-                'type': 'person',
-                'attributes': {
-                    'name': 'foo',
-                }
-            }
-        }
+        data = dict(data=dict(type='person', name='foo'))
         response = self.app.post('/api/person', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
         location = response.headers['Location']
-        people = self.session.query(self.Person).all()
-        self.assertEqual(len(people), 1)
-        person = people[0]
-        self.assertTrue(location.endswith('/api/person/{0}'.format(person.id)))
+        # TODO Technically, this test shouldn't know beforehand where the
+        # location of the created object will be. We are testing implementation
+        # here, assuming that the implementation of the server creates a new
+        # Person object with ID 1, which is bad style.
+        assert location.endswith('/api/person/1')
         document = loads(response.data)
         person = document['data']
-        self.assertEqual(person['type'], 'person')
-        self.assertEqual(person['id'], '1')
-        self.assertEqual(person['attributes']['name'], 'foo')
+        assert person['type'] == 'person'
+        assert person['id'] == '1'
+        assert person['attributes']['name'] == 'foo'
         # # No self link will exist because no GET endpoint was created.
         # assert person['links']['self'] == location
 
@@ -203,8 +190,7 @@ class TestCreatingResources(ManagerTestBase):
         For more information, see the `Client-Generated IDs`_ section of the
         JSON API specification.
 
-        .. _Client-Generated IDs:
-           http://jsonapi.org/format/#crud-creating-client-ids
+        .. _Client-Generated IDs: http://jsonapi.org/format/#crud-creating-client-ids
 
         """
         generated_id = uuid.uuid1()
@@ -227,8 +213,7 @@ class TestCreatingResources(ManagerTestBase):
         For more information, see the `Client-Generated IDs`_ section of the
         JSON API specification.
 
-        .. _Client-Generated IDs:
-           http://jsonapi.org/format/#crud-creating-client-ids
+        .. _Client-Generated IDs: http://jsonapi.org/format/#crud-creating-client-ids
 
         """
         self.manager.create_api(self.Article, url_prefix='/api2',
@@ -246,8 +231,7 @@ class TestCreatingResources(ManagerTestBase):
         For more information, see the `409 Conflict`_ section of the JSON API
         specification.
 
-        .. _409 Conflict:
-           http://jsonapi.org/format/#crud-creating-responses-409
+        .. _409 Conflict: http://jsonapi.org/format/#crud-creating-responses-409
 
         """
 
@@ -264,8 +248,7 @@ class TestCreatingResources(ManagerTestBase):
         For more information, see the `409 Conflict`_ section of the JSON API
         specification.
 
-        .. _409 Conflict:
-           http://jsonapi.org/format/#crud-creating-responses-409
+        .. _409 Conflict: http://jsonapi.org/format/#crud-creating-responses-409
 
         """
         generated_id = uuid.uuid1()
