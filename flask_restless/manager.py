@@ -269,12 +269,13 @@ class APIManager(object):
         collection_name = self.created_apis_for[model].collection_name
         blueprint_name = self.created_apis_for[model].blueprint_name
         api_name = APIManager.api_name(collection_name)
-        parts = [blueprint_name, api_name]
+        parts = [api_name]
         # If we are looking for a relationship URL, the view name ends with
-        # '.relationships'.
+        # '_relationships'.
         if 'relationship' in kw and kw.pop('relationship'):
             parts.append('relationships')
-        url = flask_url_for('.'.join(parts), **kw)
+        endpoint_name = '_'.join(parts)
+        url = flask_url_for(f'{blueprint_name}.{endpoint_name}', **kw)
         # if _absolute_url:
         #     url = urljoin(request.url_root, url)
         return url
@@ -693,7 +694,7 @@ class APIManager(object):
         # :http:get:`/api/articles/1/relationships/author` interpret the
         # word `relationships` as the name of a relation of an article
         # object.
-        relationship_api_name = '{0}.relationships'.format(apiname)
+        relationship_api_name = f'{apiname}_relationships'
         rapi_view = RelationshipAPI.as_view
         adftmr = allow_delete_from_to_many_relationships
         relationship_api_view = \
@@ -760,7 +761,7 @@ class APIManager(object):
         # which responds only to GET requests and responds with the result of
         # evaluating functions on all instances of the specified model
         if allow_functions:
-            eval_api_name = '{0}.eval'.format(apiname)
+            eval_api_name = f'{apiname}_eval'
             eval_api_view = FunctionAPI.as_view(eval_api_name, session, model)
             eval_endpoint = '/eval{0}'.format(collection_url)
             eval_methods = ['GET']

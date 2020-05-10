@@ -180,6 +180,7 @@ def primary_key_names(model):
     """Returns all the primary keys for a model."""
     return [key for key, field in inspect.getmembers(model)
             if isinstance(field, QueryableAttribute)
+            and hasattr(field, 'property')
             and isinstance(field.property, ColumnProperty)
             and field.property.columns[0].primary_key]
 
