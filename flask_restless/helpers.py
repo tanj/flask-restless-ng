@@ -12,6 +12,7 @@
 """Helper functions for Flask-Restless."""
 import datetime
 import inspect
+from functools import lru_cache
 
 from dateutil.parser import parse as parse_datetime
 from sqlalchemy import Date
@@ -74,6 +75,7 @@ def get_relations(model):
             and get_related_model(model, k)]
 
 
+@lru_cache()
 def get_related_model(model, relationname):
     """Gets the class of the model to which `model` is related by the attribute
     whose name is `relationname`.
@@ -176,6 +178,7 @@ def get_field_type(model, fieldname):
     return None
 
 
+@lru_cache()
 def primary_key_names(model):
     """Returns all the primary keys for a model."""
     return [key for key, field in inspect.getmembers(model)

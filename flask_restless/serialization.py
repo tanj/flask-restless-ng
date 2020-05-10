@@ -318,7 +318,6 @@ def create_relationship(model, instance, relation):
     # whether the URL exists before setting the related link.
     try:
         related_model = get_related_model(model, relation)
-        url_for(related_model)
     except ValueError:
         pass
     else:
