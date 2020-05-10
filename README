@@ -1,4 +1,10 @@
-# Flask-Restless #
+# Flask-Restless-NG #
+
+## About
+
+This is a fork of no longer maintained [Flask-Restless][https://github.com/jfinkels/flask-restless] module.
+The goal of this fork is to keep it compatible with the latest version of Flask and SQLAlchemy, preformance
+improvements and bug fixing
 
 ## Introduction ##
 
