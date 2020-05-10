@@ -5,3 +5,6 @@ clients with Flask-Restless.
 
 The `server_configuration/` directory contains examples of different ways of
 configuring Flask-Restless on the server side.
+
+The `chinook` directory contains example DB from https://www.sqlitetutorial.net/sqlite-sample-database/
+with examples of mapping column names with column names not python/SQLAlchemy-friendly

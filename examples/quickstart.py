@@ -1,12 +1,13 @@
 import flask
-import flask.ext.sqlalchemy
-import flask.ext.restless
+import flask_sqlalchemy
+import flask_restless
 
 # Create the Flask application and the Flask-SQLAlchemy object.
 app = flask.Flask(__name__)
 app.config['DEBUG'] = True
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
-db = flask.ext.sqlalchemy.SQLAlchemy(app)
+db = flask_sqlalchemy.SQLAlchemy(app)
+
 
 # Create your Flask-SQLALchemy models as usual but with the following
 # restriction: they must have an __init__ method that accepts keyword
@@ -18,20 +19,20 @@ class Person(db.Model):
     name = db.Column(db.Unicode)
     birth_date = db.Column(db.Date)
 
+
 class Article(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.Unicode)
     published_at = db.Column(db.DateTime)
     author_id = db.Column(db.Integer, db.ForeignKey('person.id'))
-    author = db.relationship(Person, backref=db.backref('articles',
-                                                        lazy='dynamic'))
+    author = db.relationship(Person, backref=db.backref('articles', lazy='dynamic'))
 
 
 # Create the database tables.
 db.create_all()
 
 # Create the Flask-Restless API manager.
-manager = flask.ext.restless.APIManager(app, flask_sqlalchemy_db=db)
+manager = flask_restless.APIManager(app, flask_sqlalchemy_db=db)
 
 # Create API endpoints, which will be available at /api/<tablename> by
 # default. Allowed HTTP methods can be specified as well.
