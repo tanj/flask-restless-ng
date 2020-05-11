@@ -30,6 +30,7 @@ class Article(Base):
     author = relationship('Person', backref=backref('articles'))
 
 
+@unittest.skip("Slow test, for manual run only")
 class TestPerformance(unittest.TestCase):
 
     def setUp(self):

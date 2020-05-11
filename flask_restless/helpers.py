@@ -20,7 +20,11 @@ from sqlalchemy import DateTime
 from sqlalchemy import Interval
 from sqlalchemy import Time
 from sqlalchemy.exc import NoInspectionAvailable
-from sqlalchemy.ext.associationproxy import AssociationProxy
+try:
+    # SQLAlchemy 1.3+
+    from sqlalchemy.ext.associationproxy import ObjectAssociationProxyInstance as AssociationProxy
+except ImportError:
+    from sqlalchemy.ext.associationproxy import AssociationProxy
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import ColumnProperty
 from sqlalchemy.orm import class_mapper
@@ -71,7 +75,7 @@ def session_query(session, model):
 def get_relations(model):
     """Returns a list of relation names of `model` (as a list of strings)."""
     return [k for k in dir(model)
-            if not (k.startswith('__') or k in RELATION_BLACKLIST)
+            if not (k.startswith('_') or k in RELATION_BLACKLIST)
             and get_related_model(model, k)]
 
 

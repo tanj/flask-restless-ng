@@ -21,7 +21,11 @@ import inspect
 
 from sqlalchemy import and_
 from sqlalchemy import or_
-from sqlalchemy.ext.associationproxy import AssociationProxy
+try:
+    # SQLAlchemy 1.3+
+    from sqlalchemy.ext.associationproxy import ObjectAssociationProxyInstance as AssociationProxy
+except ImportError:
+    from sqlalchemy.ext.associationproxy import AssociationProxy
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql import false as FALSE
