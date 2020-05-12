@@ -4,6 +4,12 @@ Changelog
 Changes in Flask-Restless-NG
 ============================
 
+Version 0.0.2
+-------------
+- New serializer (2-3x faster)
+- Added lru_cache to helpers to reduce number of recursive calls (better performance)
+
+
 Version 0.0.1
 -------------
 

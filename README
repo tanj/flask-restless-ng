@@ -4,7 +4,7 @@
 
 This is a fork of no longer maintained [Flask-Restless](https://github.com/jfinkels/flask-restless) module.
 The goal of this fork is to keep it compatible with the latest version of Flask and SQLAlchemy, performance
-improvements and bug fixing
+improvements (faster serializer, etc) and bug fixing
 
 ## Introduction ##
 
