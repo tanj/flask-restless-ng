@@ -28,7 +28,7 @@ from .helpers import model_for
 from .helpers import primary_key_for
 from .helpers import serializer_for
 from .helpers import url_for
-from .serialization import DefaultSerializer
+from .serialization import DefaultSerializer, FastSerializer
 from .serialization import DefaultDeserializer
 from .views import API
 from .views import FunctionAPI
@@ -633,13 +633,11 @@ class APIManager(object):
         # Create a default serializer and deserializer if none have been
         # provided.
         if serializer is None:
-            serializer = DefaultSerializer(only, exclude,
-                                           additional_attributes)
-            # if validation_exceptions is None:
-            #     validation_exceptions = [DeserializationException]
-            # else:
-            #     validation_exceptions.append(DeserializationException)
-        # session = self.restlessinfo.session
+            # serializer = DefaultSerializer(only, exclude,
+            #                                additional_attributes)
+            serializer = FastSerializer(model, collection_name, primary_key=primary_key,
+                                        only=only, exclude=exclude, additional_attributes=additional_attributes)
+
         session = self.session
         if deserializer is None:
             deserializer = DefaultDeserializer(self.session, model,

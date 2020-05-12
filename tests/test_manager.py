@@ -304,6 +304,7 @@ class TestAPIManager(ManagerTestBase):
         url_for.created_managers.clear()
         collection_name.created_managers.clear()
         serializer_for.created_managers.clear()
+        model_for.__call__.cache_clear()
 
     def test_url_for(self):
         """Tests the global :func:`flask_restless.url_for` function."""

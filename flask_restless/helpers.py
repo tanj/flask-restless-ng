@@ -13,6 +13,7 @@
 import datetime
 import inspect
 from functools import lru_cache
+from typing import List
 
 from dateutil.parser import parse as parse_datetime
 from sqlalchemy import Date
@@ -25,7 +26,7 @@ try:
     from sqlalchemy.ext.associationproxy import ObjectAssociationProxyInstance as AssociationProxy
 except ImportError:
     from sqlalchemy.ext.associationproxy import AssociationProxy
-from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.ext.hybrid import HYBRID_PROPERTY, hybrid_property
 from sqlalchemy.orm import ColumnProperty
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import RelationshipProperty as RelProperty
@@ -180,6 +181,16 @@ def get_field_type(model, fieldname):
             return None
         return prop.columns[0].type
     return None
+
+
+def attribute_columns(model) -> List[str]:
+    """Returns a list of model's column names that should be considered as attributes."""
+    inspected_model = sqlalchemy_inspect(model)
+    column_attrs = inspected_model.column_attrs.keys()
+    descriptors = inspected_model.all_orm_descriptors.items()
+    hybrid_columns = [k for k, d in descriptors if d.extension_type == HYBRID_PROPERTY]
+
+    return column_attrs + hybrid_columns
 
 
 @lru_cache()
@@ -391,6 +402,7 @@ class KnowsAPIManagers:
 class ModelFinder(KnowsAPIManagers, Singleton):
     """The singleton class that backs the :func:`model_for` function."""
 
+    @lru_cache()
     def __call__(self, resource_type, _apimanager=None, **kw):
         if _apimanager is not None:
             # This may raise ValueError.
@@ -410,6 +422,7 @@ class ModelFinder(KnowsAPIManagers, Singleton):
 class CollectionNameFinder(KnowsAPIManagers, Singleton):
     """The singleton class that backs the :func:`collection_name` function."""
 
+    @lru_cache()
     def __call__(self, model, _apimanager=None, **kw):
         if _apimanager is not None:
             if model not in _apimanager.created_apis_for:
@@ -462,6 +475,7 @@ class UrlFinder(KnowsAPIManagers, Singleton):
 class SerializerFinder(KnowsAPIManagers, Singleton):
     """The singleton class that backs the :func:`serializer_for` function."""
 
+    @lru_cache()
     def __call__(self, model, _apimanager=None, **kw):
         if _apimanager is not None:
             if model not in _apimanager.created_apis_for:
@@ -483,6 +497,7 @@ class SerializerFinder(KnowsAPIManagers, Singleton):
 class PrimaryKeyFinder(KnowsAPIManagers, Singleton):
     """The singleton class that backs the :func:`primary_key_for` function."""
 
+    @lru_cache()
     def __call__(self, instance_or_model, _apimanager=None, **kw):
         if isinstance(instance_or_model, type):
             model = instance_or_model

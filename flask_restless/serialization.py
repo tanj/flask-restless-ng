@@ -21,6 +21,7 @@ protocol.
 """
 from __future__ import division
 
+from copy import copy
 from datetime import date
 from datetime import datetime
 from datetime import time
@@ -38,6 +39,7 @@ from sqlalchemy.inspection import inspect
 from werkzeug.routing import BuildError
 from werkzeug.urls import url_quote_plus
 
+from .helpers import attribute_columns
 from .helpers import collection_name
 from .helpers import is_mapped_class
 from .helpers import foreign_keys
@@ -48,6 +50,7 @@ from .helpers import get_relations
 from .helpers import has_field
 from .helpers import is_like_list
 from .helpers import primary_key_for
+from .helpers import primary_key_names
 from .helpers import primary_key_value
 from .helpers import serializer_for
 from .helpers import strings_to_datetimes
@@ -644,6 +647,153 @@ class DefaultSerializer(Serializer):
         # TODO In Python 2.7 and later, this should be a dict comprehension.
         result['relationships'] = dict((rel, cr(model, instance, rel))
                                        for rel in relations)
+        return result
+
+
+class FastSerializer(Serializer):
+    """An implementation of serializer optimized for speed.
+
+    Instead of inspecting each model (attributes, foreign keys, etc.) during serialization, it does that during instantiation.
+    """
+
+    def __init__(self, model, type_name, primary_key=None, only=None, exclude=None, additional_attributes=None, **kwargs):
+        super().__init__(**kwargs)
+        if only is not None and exclude is not None:
+            raise ValueError('Cannot specify both `only` and `exclude` keyword arguments simultaneously')
+
+        if additional_attributes is not None and exclude is not None and any(attr in exclude for attr in additional_attributes):
+            raise ValueError('Cannot exclude attributes listed in the `additional_attributes` keyword argument')
+
+        self._model = model
+        self._type = type_name
+        if primary_key is None:
+            pk_names = primary_key_names(model)
+            primary_key = 'id' if 'id' in pk_names else pk_names[0]
+        self._primary_key = primary_key
+        self._relations = set(get_relations(model))
+        self._only = None
+
+        columns = set(attribute_columns(model))
+        # JSON API 1.0: Fields for a resource object MUST share a common namespace with each other and with type and id. In other words,
+        # a resource can not have an attribute and relationship with the same name, nor can it have an attribute or relationship named type or id.
+        # https://jsonapi.org/format/#document-resource-object-fields
+        columns -= {'type', 'id'}
+
+        # Also include any attributes specified by the user.
+        if additional_attributes is not None:
+            columns |= set(additional_attributes)
+
+        # Only include fields allowed by the user during the instantiation of this object.
+        if only is not None:
+            # Always include at least the type and ID, regardless of what the user specified.
+            only = {get_column_name(column) for column in only}
+            columns &= only
+            self._relations &= only
+            self._only = only
+
+        # Exclude columns specified by the user during the instantiation of this object.
+        if exclude is not None:
+            excluded_column_names = {get_column_name(column) for column in exclude}
+            columns -= excluded_column_names
+            self._relations -= excluded_column_names
+
+        # JSON API 1.0: Although has-one foreign keys (e.g. author_id) are often stored internally alongside other information to be represented in a resource
+        # object, these keys SHOULD NOT appear as attributes
+        # https://jsonapi.org/format/#document-resource-object-attributes
+        columns -= set(foreign_keys(model))
+
+        # Exclude column names that are blacklisted.
+        columns = {column for column in columns if not column.startswith('__') and column not in COLUMN_BLACKLIST}
+
+        self._columns = columns
+
+    def __call__(self, instance, only=None):
+        columns = copy(self._columns)
+
+        if only is not None:
+            columns &= only
+
+        # Create a dictionary mapping attribute name to attribute value for
+        # this particular instance.
+        attributes = {column: getattr(instance, column) for column in columns}
+
+        for key, value in attributes.items():
+            # Call any functions that appear in the result.
+            if callable(value):
+                attributes[key] = value()
+
+        # Serialize any date- or time-like objects that appear in the
+        # attributes.
+        #
+        # TODO In Flask 1.0, the default JSON encoder for the Flask
+        # application object does this automatically. Alternately, the
+        # user could have set a smart JSON encoder on the Flask
+        # application, which would cause these attributes to be
+        # converted to strings when the Response object is created (in
+        # the `jsonify` function, for example). However, we should not
+        # rely on that JSON encoder since the user could set any crazy
+        # encoder on the Flask application.
+        for key, value in attributes.items():
+            if isinstance(value, (date, datetime, time)):
+                attributes[key] = value.isoformat()
+            elif isinstance(value, timedelta):
+                attributes[key] = value.total_seconds()
+
+        # TODO: Drop this in the future releases
+        # Recursively serialize any object that appears in the
+        # attributes. This may happen if, for example, the return value
+        # of one of the callable functions is an instance of another
+        # SQLAlchemy model class.
+        for key, val in attributes.items():
+            # This is a bit of a fragile test for whether the object
+            # needs to be serialized: we simply check if the class of
+            # the object is a mapped class.
+            if is_mapped_class(type(val)):
+                model_ = get_model(val)
+                try:
+                    serialize = serializer_for(model_)
+                except ValueError:
+                    # TODO Should this cause an exception, or fail
+                    # silently? See similar comments in `views/base.py`.
+                    # # raise SerializationException(instance)
+                    serialize = simple_serialize
+                attributes[key] = serialize(val)
+
+        # Get the ID and type of the resource.
+        id_ = str(getattr(instance, self._primary_key))
+        type_ = self._type
+        # Create the result dictionary and add the attributes.
+        result = dict(id=id_, type=type_)
+        if attributes:
+            result['attributes'] = attributes
+
+        relations = copy(self._relations)
+        # Only consider those relations listed in `only`.
+        if only is not None:
+            relations &= only
+
+        if relations:
+            result['relationships'] = {rel: create_relationship(self._model, instance, rel) for rel in relations}
+
+        # TODO: Refactor
+        if ((self._only is None or 'self' in self._only)
+                and (only is None or 'self' in only)):
+            instance_id = primary_key_value(instance)
+            # `url_for` may raise a `BuildError` if the user has not created a
+            # GET API endpoint for this model. In this case, we simply don't
+            # provide a self link.
+            #
+            # TODO This might fail if the user has set the
+            # `current_app.build_error_handler` attribute, in which case, the
+            # exception may not be raised.
+            try:
+                path = url_for(self._model, instance_id, _method='GET')
+            except BuildError:
+                pass
+            else:
+                url = urljoin(request.url_root, path)
+                result['links'] = dict(self=url)
+
         return result
 
 
