@@ -32,7 +32,7 @@ from sqlalchemy.orm import validates
 try:
     import savalidation as _sav
     import savalidation.validators as sav
-except:
+except ImportError:
     has_savalidation = False
 else:
     has_savalidation = True

@@ -11,8 +11,6 @@
 # information, see LICENSE.AGPL and LICENSE.BSD.
 """Unit tests for the :mod:`flask_restless.manager` module."""
 
-import unittest
-
 from flask import Flask
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey

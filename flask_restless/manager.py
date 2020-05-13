@@ -18,7 +18,6 @@ their SQLAlchemy models.
 from collections import defaultdict
 from collections import namedtuple
 from uuid import uuid1
-import sys
 
 from flask import Blueprint
 from flask import url_for as flask_url_for

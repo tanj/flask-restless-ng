@@ -19,7 +19,7 @@ from datetime import time
 # This import is unused but is required for testing on PyPy. CPython can
 # use psycopg2, but PyPy can only use psycopg2cffi.
 try:
-    import psycopg2
+    import psycopg2  # noqa
 except ImportError:
     from psycopg2cffi import compat
     compat.register()
@@ -606,16 +606,17 @@ class TestFiltering(SearchTestBase):
         self.session.add_all([person1, person2, person3, person4])
         self.session.commit()
         filters = [{
-            'and': [{
-                'name': 'birthday',
-                'op': '>',
-                'val': '1990-1-1'
-            },
-            {
-                'name': 'birthday',
-                'op': '<',
-                'val': '1993-1-1'
-            }]
+            'and': [
+                {
+                    'name': 'birthday',
+                    'op': '>',
+                    'val': '1990-1-1'
+                },
+                {
+                    'name': 'birthday',
+                    'op': '<',
+                    'val': '1993-1-1'
+                }]
         }]
         response = self.search('/api/person', filters)
         document = loads(response.data)
@@ -623,8 +624,7 @@ class TestFiltering(SearchTestBase):
         assert len(people) == 2
         assert ['2', '3'] == sorted(person['id'] for person in people)
 
-    @unittest.skip("I'm not certain in what situations an invalid value should cause"
-          " a SQLAlchemy error")
+    @unittest.skip("I'm not certain in what situations an invalid value should cause a SQLAlchemy error")
     def test_invalid_value(self):
         """Tests for an error response on an invalid value in a filter object.
 

@@ -40,17 +40,15 @@ class TestServerResponsibilities(ManagerTestBase):
     """
 
     def setUp(self):
-        super(TestServerResponsibilities, self).setUp()
+        super().setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
             name = Column(Unicode)
 
-        #self.Person = Person
         self.Base.metadata.create_all()
-        self.manager.create_api(Person, methods=['GET', 'POST', 'PATCH',
-                                                 'DELETE'])
+        self.manager.create_api(Person, methods=['GET', 'POST', 'PATCH', 'DELETE'])
 
     def test_get_content_type(self):
         """"Tests that a response to a :http:method:`get` request has

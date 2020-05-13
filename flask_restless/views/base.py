@@ -25,14 +25,9 @@ from functools import wraps
 from itertools import chain
 import math
 import re
-# In Python 3...
-try:
-    from urllib.parse import urlparse
-    from urllib.parse import urlunparse
-# In Python 2...
-except ImportError:
-    from urlparse import urlparse
-    from urlparse import urlunparse
+
+from urllib.parse import urlparse
+from urllib.parse import urlunparse
 
 from flask import current_app
 from flask import json
@@ -59,9 +54,7 @@ from ..search import ComparisonToNull
 from ..search import search
 from ..search import search_relationship
 from ..search import UnknownField
-from ..serialization import simple_serialize
 from ..serialization import simple_relationship_serialize
-from ..serialization import DefaultDeserializer
 from ..serialization import DeserializationException
 from ..serialization import SerializationException
 from .helpers import count
@@ -213,24 +206,6 @@ class MultipleExceptions(Exception):
 
         #: Sequence of other exceptions that have been raised in the code.
         self.exceptions = exceptions
-
-
-def _is_msie8or9():
-    """Returns ``True`` if and only if the user agent of the client making the
-    request indicates that it is Microsoft Internet Explorer 8 or 9.
-
-    .. note::
-
-       We have no way of knowing if the user agent is lying, so we just make
-       our best guess based on the information provided.
-
-    """
-    # request.user_agent.version comes as a string, so we have to parse it
-    version = lambda ua: tuple(int(d) for d in ua.version.split('.'))
-    return (request.user_agent is not None
-            and request.user_agent.version is not None
-            and request.user_agent.browser == 'msie'
-            and (8, 0) <= version(request.user_agent) < (10, 0))
 
 
 def un_camel_case(s):
@@ -407,12 +382,8 @@ def requires_json_api_mimetype(func):
         header = request.headers.get('Content-Type')
         content_type, extra = parse_options_header(header)
         content_is_json = content_type.startswith(CONTENT_TYPE)
-        is_msie = _is_msie8or9()
         # Request must have the Content-Type: application/vnd.api+json header,
-        # unless the User-Agent string indicates that the client is Microsoft
-        # Internet Explorer 8 or 9 (which has a fixed Content-Type of
-        # 'text/html'; for more information, see issue #267).
-        if not is_msie and not content_is_json:
+        if not content_is_json:
             detail = ('Request must have "Content-Type: {0}"'
                       ' header').format(CONTENT_TYPE)
             return error_response(415, detail=detail)
@@ -1186,10 +1157,11 @@ class APIBase(ModelView):
         # database integrity errors. However, in order to rollback the session,
         # we need to have a session object available to roll back. Therefore we
         # need to manually decorate each of the view functions here.
-        decorate = lambda name, f: setattr(self, name, f(getattr(self, name)))
+        def decorate(name, func):
+            return setattr(self, name, func(getattr(self, name)))
+
         for method in ['get', 'post', 'patch', 'delete']:
-            # Check if the subclass has the method before trying to decorate
-            # it.
+            # Check if the subclass has the method before trying to decorate it.
             if hasattr(self, method):
                 decorate(method, catch_integrity_errors(self.session))
 

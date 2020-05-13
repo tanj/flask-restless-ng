@@ -33,8 +33,6 @@ from .helpers import dumps
 from .helpers import loads
 from .helpers import FlaskSQLAlchemyTestBase
 from .helpers import ManagerTestBase
-from .helpers import MSIE8_UA
-from .helpers import MSIE9_UA
 
 
 class TestDeleting(ManagerTestBase):
@@ -94,42 +92,6 @@ class TestDeleting(ManagerTestBase):
         assert response.status_code == 405
         # TODO check error message here
         assert article.author is person
-
-    def test_msie8(self):
-        """Tests for compatibility with Microsoft Internet Explorer 8.
-
-        According to issue #267, making requests using JavaScript from MSIE8
-        does not allow changing the content type of the request (it is always
-        ``text/html``). Therefore Flask-Restless should ignore the content type
-        when a request is coming from this client.
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-        headers = {'User-Agent': MSIE8_UA}
-        content_type = 'text/html'
-        response = self.app.delete('/api/person/1', headers=headers,
-                                   content_type=content_type)
-        assert response.status_code == 204
-
-    def test_msie9(self):
-        """Tests for compatibility with Microsoft Internet Explorer 9.
-
-        According to issue #267, making requests using JavaScript from MSIE9
-        does not allow changing the content type of the request (it is always
-        ``text/html``). Therefore Flask-Restless should ignore the content type
-        when a request is coming from this client.
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-        headers = {'User-Agent': MSIE9_UA}
-        content_type = 'text/html'
-        response = self.app.delete('/api/person/1', headers=headers,
-                                   content_type=content_type)
-        assert response.status_code == 204
 
     def test_disallow_delete_many(self):
         """Tests that deleting an entire collection is disallowed by default.

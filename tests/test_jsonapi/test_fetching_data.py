@@ -911,7 +911,6 @@ class TestSorting(ManagerTestBase):
         articles = document['data']
         assert ['2', '1', '3'] == [c['id'] for c in articles]
 
-
     def test_sort_multiple_relationship_attributes(self):
         """Tests that the client can sort by multiple relationship
         attributes.
@@ -1309,15 +1308,15 @@ class TestPagination(ManagerTestBase):
         query_string = {'page[number]': 4, 'page[size]': 3}
         response = self.app.get('/api/person', query_string=query_string)
         links = response.headers['Link'].split(',')
-        assert any(all(('/api/person?' in l, 'page[number]=1' in l,
-                        'page[size]=3' in l, 'rel="first"' in l))
-                   for l in links)
-        assert any(all(('/api/person?' in l, 'page[number]=9' in l,
-                        'page[size]=3' in l, 'rel="last"' in l))
-                   for l in links)
-        assert any(all(('/api/person?' in l, 'page[number]=3' in l,
-                        'page[size]=3' in l, 'rel="prev"' in l))
-                   for l in links)
-        assert any(all(('/api/person?' in l, 'page[number]=5' in l,
-                        'page[size]=3' in l, 'rel="next"' in l))
-                   for l in links)
+        assert any(all(('/api/person?' in link, 'page[number]=1' in link,
+                        'page[size]=3' in link, 'rel="first"' in link))
+                   for link in links)
+        assert any(all(('/api/person?' in link, 'page[number]=9' in link,
+                        'page[size]=3' in link, 'rel="last"' in link))
+                   for link in links)
+        assert any(all(('/api/person?' in link, 'page[number]=3' in link,
+                        'page[size]=3' in link, 'rel="prev"' in link))
+                   for link in links)
+        assert any(all(('/api/person?' in link, 'page[number]=5' in link,
+                        'page[size]=3' in link, 'rel="next"' in link))
+                   for link in links)

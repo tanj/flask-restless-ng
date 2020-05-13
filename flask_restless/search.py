@@ -99,8 +99,8 @@ def _sub_operator(model, argument, fieldname):
 #: be described by the strings ``'=='``, ``'eq'``, ``'equals'``, etc.
 OPERATORS = {
     # Operators which accept a single argument.
-    'is_null': lambda f: f == None,
-    'is_not_null': lambda f: f != None,
+    'is_null': lambda f: f.is_(None),
+    'is_not_null': lambda f: f.isnot(None),
     # 'desc': lambda f: f.desc,
     # 'asc': lambda f: f.asc,
     # Operators which accept two arguments.
@@ -307,8 +307,6 @@ def create_operation(model, fieldname, operator, argument):
     """
     # raises KeyError if operator not in OPERATORS
     opfunc = OPERATORS[operator]
-    # In Python 3.0 or later, this should be `inspect.getfullargspec`
-    # because `inspect.getargspec` is deprecated.
     numargs = len(inspect.getfullargspec(opfunc).args)
     # raises AttributeError if `fieldname` does not exist
     field = getattr(model, fieldname)

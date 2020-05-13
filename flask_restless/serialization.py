@@ -306,7 +306,7 @@ def create_relationship(model, instance, relation):
     # resource, then there is no "related" link to provide, so we check
     # whether the URL exists before setting the related link.
     try:
-        related_model = get_related_model(model, relation)
+        get_related_model(model, relation)
     except ValueError:
         pass
     else:

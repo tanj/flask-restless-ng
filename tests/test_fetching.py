@@ -38,10 +38,7 @@ from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import FlaskSQLAlchemyTestBase
 from .helpers import loads
-from .helpers import MSIE8_UA
-from .helpers import MSIE9_UA
 from .helpers import ManagerTestBase
-
 
 
 class TestFetchCollection(ManagerTestBase):
@@ -99,36 +96,6 @@ class TestFetchCollection(ManagerTestBase):
         document = loads(response.data[4:-1])
         people = document['data']
         assert ['1', '2'] == sorted(person['id'] for person in people)
-
-    def test_msie8(self):
-        """Tests for compatibility with Microsoft Internet Explorer 8.
-
-        According to issue #267, making requests using JavaScript from MSIE8
-        does not allow changing the content type of the request (it is always
-        ``text/html``). Therefore Flask-Restless should ignore the content type
-        when a request is coming from this client.
-
-        """
-        headers = {'User-Agent': MSIE8_UA}
-        content_type = 'text/html'
-        response = self.app.get('/api/person', headers=headers,
-                                content_type=content_type)
-        assert response.status_code == 200
-
-    def test_msie9(self):
-        """Tests for compatibility with Microsoft Internet Explorer 9.
-
-        According to issue #267, making requests using JavaScript from MSIE9
-        does not allow changing the content type of the request (it is always
-        ``text/html``). Therefore Flask-Restless should ignore the content type
-        when a request is coming from this client.
-
-        """
-        headers = {'User-Agent': MSIE9_UA}
-        content_type = 'text/html'
-        response = self.app.get('/api/person', headers=headers,
-                                content_type=content_type)
-        assert response.status_code == 200
 
     def test_callable_query(self):
         """Tests for making a query with a custom callable ``query`` attribute.

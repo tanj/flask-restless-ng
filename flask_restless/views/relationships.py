@@ -287,8 +287,7 @@ class RelationshipAPI(APIBase):
                 detail = ('No object of type {0} found'
                           ' with ID {1}').format(type_, id_)
                 return error_response(404, detail=detail)
-            if (isinstance(replacement, list)
-                and any(value is None for value in replacement)):
+            if isinstance(replacement, list) and any(value is None for value in replacement):
                 not_found = (rel for rel, value in zip(data, replacement)
                              if value is None)
                 detail = 'No object of type {0} found with ID {1}'

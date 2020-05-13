@@ -50,8 +50,6 @@ from .helpers import dumps
 from .helpers import loads
 from .helpers import FlaskSQLAlchemyTestBase
 from .helpers import ManagerTestBase
-from .helpers import MSIE8_UA
-from .helpers import MSIE9_UA
 
 
 def raise_s_exception(instance, *args, **kw):
@@ -234,38 +232,6 @@ class TestCreating(ManagerTestBase):
                                  content_type=None)
         assert response.status_code == 415
         assert response.headers['Content-Type'] == CONTENT_TYPE
-
-    def test_msie8(self):
-        """Tests for compatibility with Microsoft Internet Explorer 8.
-
-        According to issue #267, making requests using JavaScript from MSIE8
-        does not allow changing the content type of the request (it is always
-        ``text/html``). Therefore Flask-Restless should ignore the content type
-        when a request is coming from this client.
-
-        """
-        headers = {'User-Agent': MSIE8_UA}
-        content_type = 'text/html'
-        data = dict(data=dict(type='person'))
-        response = self.app.post('/api/person', data=dumps(data),
-                                 headers=headers, content_type=content_type)
-        assert response.status_code == 201
-
-    def test_msie9(self):
-        """Tests for compatibility with Microsoft Internet Explorer 9.
-
-        According to issue #267, making requests using JavaScript from MSIE9
-        does not allow changing the content type of the request (it is always
-        ``text/html``). Therefore Flask-Restless should ignore the content type
-        when a request is coming from this client.
-
-        """
-        headers = {'User-Agent': MSIE9_UA}
-        content_type = 'text/html'
-        data = dict(data=dict(type='person'))
-        response = self.app.post('/api/person', data=dumps(data),
-                                 headers=headers, content_type=content_type)
-        assert response.status_code == 201
 
     def test_no_data(self):
         """Tests that a request with no data yields an error response."""
