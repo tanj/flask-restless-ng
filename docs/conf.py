@@ -57,11 +57,11 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Flask-Restless'
+project = u'Flask-Restless-NG'
 copyright = u'2012, 2013, 2014, 2015, 2016 Jeffrey Finkelstein and contributors'
 
 try:
-    release = pkg_resources.get_distribution('Flask-Restless').version
+    release = pkg_resources.get_distribution('Flask-Restless-NG').version
 except pkg_resources.DistributionNotFound:
     print('To build the documentation, the distribution information of')
     print('Flask-Restless has to be available.  Either install the package')
@@ -285,4 +285,4 @@ except ImportError, e:
 
 # Configuration for issuetracker extension.
 issuetracker = 'github'
-issuetracker_project = 'jfinkels/flask-restless'
+issuetracker_project = 'mrevutskyi/flask-restless'
