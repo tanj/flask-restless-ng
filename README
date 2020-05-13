@@ -1,5 +1,8 @@
 # Flask-Restless-NG #
 
+[![PyPI version](https://badge.fury.io/py/Flask-Restless-NG.svg)](https://badge.fury.io/py/Flask-Restless-NG)
+[![Build status](https://secure.travis-ci.org/mrevutskyi/flask-restless-ng.png)](https://travis-ci.org/mrevutskyi/flask-restless-ng)
+
 ## About
 
 This is a fork of no longer maintained [Flask-Restless](https://github.com/jfinkels/flask-restless) module.
@@ -22,8 +25,6 @@ For more information, see the
   * [documentation][5],
   * [Python Package Index listing][6],
   * [source code repository][7].
-
-[![Build status](https://secure.travis-ci.org/mrevutskyi/flask-restless-ng.png)](https://travis-ci.org/mrevutskyi/flask-restless-ng)
 
 [1]: http://flask.pocoo.org
 [2]: https://jsonapi.org
