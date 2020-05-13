@@ -81,16 +81,14 @@ files and directory:
   models
 * `views/` - the view classes that implement the JSON API interface
 
-## Installing ##-m twine upload --repository testpypi dist/*
+## Installing
 
-This application can be used with any Python version that Flask supports, which
-currently includes versions 2.6, 2.7, 3.3, and 3.4. (Python 3.2 is not
-supported by Flask and therefore cannot be supported by Flask-Restless.)
+This application can be used with any Python version 3.6+ 
 
 This application requires the following libraries to be installed:
 
-* [Flask][1] version 0.10 or greater
-* [SQLAlchemy][3] version 0.8 or greater
+* [Flask][1] version 1.0 or greater
+* [SQLAlchemy][3] version 1.2 or greater
 * [python-dateutil][8] version strictly greater than 2.2
 * [mimerender][9] version 0.5.2 or greater
 

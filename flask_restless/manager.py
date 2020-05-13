@@ -20,7 +20,6 @@ from collections import namedtuple
 from uuid import uuid1
 
 from flask import Blueprint
-from flask import url_for as flask_url_for
 
 from .helpers import collection_name
 from .helpers import model_for
@@ -68,9 +67,10 @@ STRING_TYPES = (str, )
 #: - `serializer`, the subclass of :class:`Serializer` provided for the
 #:   model exposed by this API.
 #: - `primary_key`, the primary key used by the model
+#: - `url_prefix`, the url prefix to use for the collection
 #:
 APIInfo = namedtuple('APIInfo', ['collection_name', 'blueprint_name', 'serializer',
-                                 'primary_key'])
+                                 'primary_key', 'url_prefix'])
 
 
 class IllegalArgumentError(Exception):
@@ -242,7 +242,7 @@ class APIManager(object):
                              ' `collection_name` keyword argument when calling'
                              ' `create_api()`.'.format(collection_name))
 
-    def url_for(self, model, **kw):
+    def url_for(self, model, **kw) -> str:
         """Returns the URL for the specified model, similar to
         :func:`flask.url_for`.
 
@@ -253,25 +253,30 @@ class APIManager(object):
         This method only returns URLs for endpoints created by this
         :class:`APIManager`.
 
-        The remaining keyword arguments are passed directly on to
-        :func:`flask.url_for`.
-
-        .. _Flask request context: http://flask.pocoo.org/docs/0.10/reqcontext/
-
         """
-        collection_name = self.created_apis_for[model].collection_name
-        blueprint_name = self.created_apis_for[model].blueprint_name
-        api_name = APIManager.api_name(collection_name)
-        parts = [api_name]
-        # If we are looking for a relationship URL, the view name ends with
-        # '_relationships'.
-        if 'relationship' in kw and kw.pop('relationship'):
-            parts.append('relationships')
-        endpoint_name = '_'.join(parts)
-        url = flask_url_for(f'{blueprint_name}.{endpoint_name}', **kw)
-        # if _absolute_url:
-        #     url = urljoin(request.url_root, url)
-        return url
+        try:
+            url_prefix = self.url_prefix_for(model) or ''
+        except KeyError:
+            raise ValueError('Model is not registered')
+        url_for_collection = f'{url_prefix}/{self.collection_name(model)}'
+
+        resource_id = kw.get('resource_id')
+
+        if not resource_id:
+            return url_for_collection
+
+        relation_name = kw.get('relation_name')
+        if not relation_name:
+            return f'{url_for_collection}/{resource_id}'
+
+        related_resource_id = kw.get('related_resource_id')
+        if related_resource_id:
+            return f'{url_for_collection}/{resource_id}/{relation_name}/{related_resource_id}'
+
+        relationship = kw.get('relationship')
+        if relationship:
+            return f'{url_for_collection}/{resource_id}/relationships/{relation_name}'
+        return f'{url_for_collection}/{resource_id}/{relation_name}'
 
     def collection_name(self, model):
         """Returns the collection name for the specified model, as specified by
@@ -314,6 +319,12 @@ class APIManager(object):
 
         """
         return self.created_apis_for[model].primary_key
+
+    def url_prefix_for(self, model):
+        """Returns url_prefix for the specified model, as specified
+        by the `url_prefix` keyword argument to
+        :meth:`create_api_blueprint`."""
+        return self.created_apis_for[model].url_prefix
 
     def init_app(self, app):
 
@@ -760,7 +771,7 @@ class APIManager(object):
         # Finally, record that this APIManager instance has created an API for
         # the specified model.
         self.created_apis_for[model] = APIInfo(collection_name, blueprint.name,
-                                               serializer, primary_key)
+                                               serializer, primary_key, prefix)
         return blueprint
 
     def create_api(self, *args, **kw):

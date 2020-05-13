@@ -19,6 +19,7 @@ of the JSON API specification.
 
 """
 import string
+from urllib.parse import urlparse
 
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
@@ -28,13 +29,6 @@ from sqlalchemy.orm import relationship
 from ..helpers import ManagerTestBase
 from ..helpers import dumps
 from ..helpers import loads
-
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
-
-
 
 
 class TestDocumentStructure(ManagerTestBase):
