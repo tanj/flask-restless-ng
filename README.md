@@ -6,9 +6,16 @@
 
 ## About
 
-This is a fork of no longer maintained [Flask-Restless](https://github.com/jfinkels/flask-restless) module.
-The goal of this fork is to keep it compatible with the latest version of Flask and SQLAlchemy, performance
-improvements (faster serializer, etc) and bug fixing
+This is a fork of [Flask-Restless](https://github.com/jfinkels/flask-restless) module originally written by Jeffrey Finkelstein.
+Flask-Restless is a great tool to build [JSON API][2] for SQLAlchemy models, but unfortunately is
+no longer maintained and does not support the most recent versions of Flask and SQLAlchemy 
+
+Version `1.0.0` of `Flask-Restless-NG` is fully API compatible with `Flask-Restless` version `1.0.0b1`
+with the following improvements:
+
+  * Supports Flask 1.0+ and SQLAlchemy 1.3+
+  * 2-5x faster serialization of JSON responses.
+  * Miscellaneous bugs fixed
 
 ## Introduction ##
 

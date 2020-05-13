@@ -4,6 +4,12 @@ Changelog
 Changes in Flask-Restless-NG
 ============================
 
+Version 1.0.0
+-------------
+- Performance improvement: url_for() changed to build url locally instead of delegating it to Flask
+- This is the last release that is backward compatible with the original Flask-Restless API.
+
+
 Version 0.0.2
 -------------
 - New serializer (2-3x faster)
@@ -17,7 +23,7 @@ Version 0.0.1
 - #665: Fix for hybrid_property
 
 
-Flask-Restless
+Original Flask-Restless
 ==============
 
 

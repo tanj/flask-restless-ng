@@ -80,8 +80,9 @@ setup(
     author='Maksym Revutskyi',
     author_email='maksym.revutskyi@gmail.com',
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Environment :: Web Environment',
+        'Framework :: Flask',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)',
