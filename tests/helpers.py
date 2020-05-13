@@ -24,8 +24,8 @@ import unittest
 from flask import Flask
 from flask import json
 try:
-    from flask.ext import sqlalchemy as flask_sqlalchemy
-    from flask.ext.sqlalchemy import SQLAlchemy
+    import flask_sqlalchemy
+    from flask_sqlalchemy import SQLAlchemy
 except ImportError:
     has_flask_sqlalchemy = False
 else:
@@ -314,7 +314,7 @@ class SQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
 
         """
         super().setUp()
-        engine = create_engine(self.database_uri(), convert_unicode=True)
+        engine = create_engine(self.database_uri())
         self.Session = sessionmaker(autocommit=False, autoflush=False,
                                     bind=engine)
         self.session = scoped_session(self.Session)

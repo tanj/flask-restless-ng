@@ -343,9 +343,7 @@ def strings_to_datetimes(model, dictionary):
     This function outputs a new dictionary; it does not modify the argument.
 
     """
-    # In Python 2.7+, this should be a dict comprehension.
-    return dict((k, string_to_datetime(model, k, v))
-                for k, v in dictionary.items() if k not in ('type', 'links'))
+    return {k: string_to_datetime(model, k, v) for k, v in dictionary.items() if k not in ('type', 'links')}
 
 
 def get_model(instance):

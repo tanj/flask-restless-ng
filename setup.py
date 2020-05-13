@@ -23,7 +23,7 @@ code`_ repository.
 .. _JSON API: http://jsonapi.org
 .. _documentation: https://flask-restless.readthedocs.org
 .. _pypi: https://pypi.python.org/pypi/Flask-Restless
-.. _source code: https://github.com/jfinkels/flask-restless
+.. _source code: https://github.com/mrevutskyi/flask-restless-ng
 
 """
 import codecs
@@ -43,8 +43,12 @@ VERSION_RE = r"^__version__ = ['\"]([^'\"]*)['\"]"
 
 #: The installation requirements for Flask-Restless. Flask-SQLAlchemy is not
 #: required, so the user must install it explicitly.
-REQUIREMENTS = ['flask>=0.10', 'sqlalchemy>=0.8', 'python-dateutil>2.2',
-                'mimerender>=0.5.2']
+REQUIREMENTS = [
+    'flask>=1.0',
+    'sqlalchemy>=1.2',
+    'python-dateutil>2.2',
+    'mimerender>=0.5.2'
+]
 
 #: The absolute path to this file.
 HERE = os.path.abspath(os.path.dirname(__file__))
@@ -81,12 +85,6 @@ setup(
         'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.6',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Topic :: Database :: Front-Ends',
@@ -102,10 +100,11 @@ setup(
     long_description=__doc__,
     name='Flask-Restless-NG',
     platforms='any',
+    python_requires='>=3.6',
     packages=find_packages(),
     test_suite='tests',
     tests_require=[],
     url='https://github.com/mrevutskyi/flask-restless-ng',
     version=find_version('flask_restless', '__init__.py'),
-    zip_safe=False
+    zip_safe=False,
 )

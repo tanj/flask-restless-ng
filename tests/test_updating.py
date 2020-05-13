@@ -23,7 +23,7 @@ from __future__ import division
 import unittest
 from datetime import datetime
 try:
-    from flask.ext.sqlalchemy import SQLAlchemy
+    from flask_sqlalchemy import SQLAlchemy
 except ImportError:
     has_flask_sqlalchemy = False
 else:
@@ -1207,6 +1207,8 @@ class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
     def setUp(self):
         """Creates the Flask-SQLAlchemy database and models."""
         super(TestFlaskSQLAlchemy, self).setUp()
+        if not has_flask_sqlalchemy:
+            self.skipTest('Flask-SQLAlchemy not found.')
         # HACK During testing, we don't want the session to expire, so that we
         # can access attributes of model instances *after* a request has been
         # made (that is, after Flask-Restless does its work and commits the

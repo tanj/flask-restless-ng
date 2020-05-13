@@ -309,7 +309,7 @@ def create_operation(model, fieldname, operator, argument):
     opfunc = OPERATORS[operator]
     # In Python 3.0 or later, this should be `inspect.getfullargspec`
     # because `inspect.getargspec` is deprecated.
-    numargs = len(inspect.getargspec(opfunc).args)
+    numargs = len(inspect.getfullargspec(opfunc).args)
     # raises AttributeError if `fieldname` does not exist
     field = getattr(model, fieldname)
     # each of these will raise a TypeError if the wrong number of argments
@@ -360,8 +360,7 @@ def search_relationship(session, instance, relation, filters=None, sort=None,
 
     # Filter by only those related values that are related to `instance`.
     relationship = getattr(instance, relation)
-    # TODO In Python 2.7+, this should be a set comprehension.
-    primary_keys = set(primary_key_value(inst) for inst in relationship)
+    primary_keys = {primary_key_value(inst) for inst in relationship}
     # If the relationship is empty, we can avoid a potentially expensive
     # filtering operation by simply returning an intentionally empty
     # query.

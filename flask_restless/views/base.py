@@ -258,8 +258,7 @@ def catch_processing_exceptions(func):
         try:
             return func(*args, **kw)
         except ProcessingException as exception:
-            # TODO In Python 2.7 and later, this should be a dict comprehension
-            kw = dict((key, getattr(exception, key)) for key in ERROR_FIELDS)
+            kw = {key: getattr(exception, key) for key in ERROR_FIELDS}
             # Need to change the name of the `code` key as a workaround
             # for name collisions with Werkzeug exception classes.
             kw['code'] = kw.pop('code_')
@@ -574,10 +573,9 @@ def parse_sparse_fields(type_=None):
     """
     # TODO use a regular expression to ensure field parameters are of the
     # correct format? (maybe ``fields\[[^\[\]\.]*\]``)
-    # TODO In Python 2.7 and later, this should be a dictionary comprehension.
-    fields = dict((key[7:-1], set(value.split(',')))
-                  for key, value in request.args.items()
-                  if key.startswith('fields[') and key.endswith(']'))
+    fields = {key[7:-1]: set(value.split(','))
+              for key, value in request.args.items()
+              if key.startswith('fields[') and key.endswith(']')}
     return fields.get(type_) if type_ is not None else fields
 
 
@@ -617,8 +615,7 @@ def resources_from_path(instance, path):
     # Next, do a breadth-first traversal of the resources related to
     # `instance` via the given path.
     seen = set()
-    # TODO In Pyhon 2.7 and later, this should be a set literal.
-    nextlevel = set([instance])
+    nextlevel = {instance}
     first_time = True
     while nextlevel:
         thislevel = nextlevel
@@ -687,6 +684,10 @@ def extract_error_messages(exception):
         msg = right[:right_bracket].strip(' "')
         fieldname = left[left_bracket + 1:].strip()
         return {fieldname: msg}
+    # new savalidation
+    if hasattr(exception, 'invalid_instances'):
+        # TODO handle more than once instance
+        return exception.invalid_instances[0].validation_errors
     return None
 
 
@@ -923,10 +924,7 @@ class Paginated(object):
         query_params = request.args
         # Set the new query_parameters to be everything except the
         # pagination query parameters.
-        #
-        # TODO In Python 3, this should be a dict comprehension.
-        new_query = dict((k, v) for k, v in query_params.items()
-                         if k not in (PAGE_NUMBER_PARAM, PAGE_SIZE_PARAM))
+        new_query = {k: v for k, v in query_params.items() if k not in (PAGE_NUMBER_PARAM, PAGE_SIZE_PARAM)}
         new_query_string = '&'.join(map('='.join, new_query.items()))
         # Join the base URL with the query parameter string.
         return '{0}?{1}'.format(base_url, new_query_string)

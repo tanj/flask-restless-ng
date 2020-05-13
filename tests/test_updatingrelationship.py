@@ -923,7 +923,6 @@ class TestUpdatingToOne(ManagerTestBase):
         data = dumps(data)
         response = self.app.patch('/api/article/1/relationships/author',
                                   data=data)
-        print(response.data)
         assert response.status_code == 404
         # TODO check error message here
 

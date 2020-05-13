@@ -26,10 +26,7 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
-try:
-    from urllib.parse import urljoin
-except ImportError:
-    from urlparse import urljoin
+from urllib.parse import urljoin
 
 from flask import request
 from sqlalchemy import Column
@@ -59,17 +56,6 @@ from .helpers import url_for
 #: Names of columns which should definitely not be considered user columns to
 #: be included in a dictionary representation of a model.
 COLUMN_BLACKLIST = ('_sa_polymorphic_on', )
-
-# TODO In Python 2.7 or later, we can just use `timedelta.total_seconds()`.
-if hasattr(timedelta, 'total_seconds'):
-    def total_seconds(td):
-        return td.total_seconds()
-else:
-    # This formula comes from the Python 2.7 documentation for the
-    # `timedelta.total_seconds` method.
-    def total_seconds(td):
-        secs = td.seconds + td.days * 24 * 3600
-        return (td.microseconds + secs * 10**6) / 10**6
 
 
 class SerializationException(Exception):
@@ -451,16 +437,11 @@ class DefaultSerializer(Serializer):
         # specified.
         if only is not None:
             # Convert SQLAlchemy Column objects to strings if necessary.
-            #
-            # TODO In Python 2.7 or later, this should be a set comprehension.
-            only = set(get_column_name(column) for column in only)
-            # TODO In Python 2.7 or later, this should be a set literal.
-            only |= set(['type', 'id'])
+            only = {get_column_name(column) for column in only}
+            only |= {'type', 'id'}
         if exclude is not None:
             # Convert SQLAlchemy Column objects to strings if necessary.
-            #
-            # TODO In Python 2.7 or later, this should be a set comprehension.
-            exclude = set(get_column_name(column) for column in exclude)
+            exclude = {get_column_name(column) for column in exclude}
         self.default_fields = only
         self.exclude = exclude
         self.additional_attributes = additional_attributes
@@ -494,9 +475,7 @@ class DefaultSerializer(Serializer):
         # Always include at least the type, ID, and the self link, regardless
         # of what the user requested.
         if only is not None:
-            # TODO Should the 'self' link be mandatory as well?
-            # TODO In Python 2.7 or later, this should be a set literal.
-            only = set(only) | set(['type', 'id'])
+            only = set(only) | {'type', 'id'}
         model = type(instance)
         try:
             inspected_instance = inspect(model)
@@ -535,15 +514,10 @@ class DefaultSerializer(Serializer):
 
         # Create a dictionary mapping attribute name to attribute value for
         # this particular instance.
-        #
-        # TODO In Python 2.7 and later, this should be a dict comprehension.
-        attributes = dict((column, getattr(instance, column))
-                          for column in columns)
+        attributes = {column: getattr(instance, column) for column in columns}
         # Call any functions that appear in the result.
         #
-        # TODO In Python 2.7 and later, this should be a dict comprehension.
-        attributes = dict((k, (v() if callable(v) else v))
-                          for k, v in attributes.items())
+        attributes = {k: (v() if callable(v) else v) for k, v in attributes.items()}
         # Serialize any date- or time-like objects that appear in the
         # attributes.
         #
@@ -559,7 +533,7 @@ class DefaultSerializer(Serializer):
             if isinstance(val, (date, datetime, time)):
                 attributes[key] = val.isoformat()
             elif isinstance(val, timedelta):
-                attributes[key] = total_seconds(val)
+                attributes[key] = val.total_seconds()
         # Recursively serialize any object that appears in the
         # attributes. This may happen if, for example, the return value
         # of one of the callable functions is an instance of another
@@ -644,9 +618,7 @@ class DefaultSerializer(Serializer):
             return result
         # For the sake of brevity, rename this function.
         cr = create_relationship
-        # TODO In Python 2.7 and later, this should be a dict comprehension.
-        result['relationships'] = dict((rel, cr(model, instance, rel))
-                                       for rel in relations)
+        result['relationships'] = {rel: cr(model, instance, rel) for rel in relations}
         return result
 
 

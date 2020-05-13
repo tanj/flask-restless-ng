@@ -28,7 +28,7 @@ from .helpers import model_for
 from .helpers import primary_key_for
 from .helpers import serializer_for
 from .helpers import url_for
-from .serialization import DefaultSerializer, FastSerializer
+from .serialization import FastSerializer
 from .serialization import DefaultDeserializer
 from .views import API
 from .views import FunctionAPI
@@ -47,10 +47,7 @@ ALL_METHODS = READONLY_METHODS | WRITEONLY_METHODS
 #: The default URL prefix for APIs created by instance of :class:`APIManager`.
 DEFAULT_URL_PREFIX = '/api'
 
-if sys.version_info < (3, ):
-    STRING_TYPES = (str, unicode)
-else:
-    STRING_TYPES = (str, )
+STRING_TYPES = (str, )
 
 #: A triple that stores the SQLAlchemy session and the universal pre- and post-
 #: processors to be applied to any API created for a particular Flask
@@ -238,10 +235,7 @@ class APIManager(object):
 
         """
         # Reverse the dictionary.
-        #
-        # TODO In Python 3 this should be a dict comprehension.
-        models = dict((info.collection_name, model)
-                      for model, info in self.created_apis_for.items())
+        models = {info.collection_name: model for model, info in self.created_apis_for.items()}
         try:
             return models[collection_name]
         except KeyError:
@@ -633,8 +627,6 @@ class APIManager(object):
         # Create a default serializer and deserializer if none have been
         # provided.
         if serializer is None:
-            # serializer = DefaultSerializer(only, exclude,
-            #                                additional_attributes)
             serializer = FastSerializer(model, collection_name, primary_key=primary_key,
                                         only=only, exclude=exclude, additional_attributes=additional_attributes)
 
