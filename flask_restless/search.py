@@ -21,22 +21,24 @@ import inspect
 
 from sqlalchemy import and_
 from sqlalchemy import or_
-try:
-    # SQLAlchemy 1.3+
-    from sqlalchemy.ext.associationproxy import ObjectAssociationProxyInstance as AssociationProxy
-except ImportError:
-    from sqlalchemy.ext.associationproxy import AssociationProxy
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql import false as FALSE
 
 from .helpers import get_model
-from .helpers import get_related_model
 from .helpers import get_related_association_proxy_model
+from .helpers import get_related_model
 from .helpers import primary_key_names
 from .helpers import primary_key_value
 from .helpers import session_query
 from .helpers import string_to_datetime
+
+try:
+    # SQLAlchemy 1.3+
+    from sqlalchemy.ext.associationproxy import ObjectAssociationProxyInstance as AssociationProxy
+except ImportError:
+    from sqlalchemy.ext.associationproxy import AssociationProxy
+
 
 
 class ComparisonToNull(Exception):

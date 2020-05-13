@@ -24,8 +24,8 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy.orm import relationship
 
-from ..helpers import dumps
 from ..helpers import ManagerTestBase
+from ..helpers import dumps
 
 
 class TestUpdatingRelationships(ManagerTestBase):

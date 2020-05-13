@@ -20,17 +20,17 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
 from flask_restless import APIManager
-from flask_restless import collection_name
 from flask_restless import IllegalArgumentError
+from flask_restless import collection_name
 from flask_restless import model_for
 from flask_restless import serializer_for
 from flask_restless import url_for
 
 from .helpers import FlaskSQLAlchemyTestBase
-from .helpers import force_content_type_jsonapi
-from .helpers import loads
 from .helpers import ManagerTestBase
 from .helpers import SQLAlchemyTestBase
+from .helpers import force_content_type_jsonapi
+from .helpers import loads
 
 
 class TestLocalAPIManager(SQLAlchemyTestBase):

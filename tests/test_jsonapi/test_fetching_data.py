@@ -25,8 +25,8 @@ from sqlalchemy import Unicode
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
-from ..helpers import loads
 from ..helpers import ManagerTestBase
+from ..helpers import loads
 
 
 class TestFetchingData(ManagerTestBase):

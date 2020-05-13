@@ -23,8 +23,8 @@ from sqlalchemy import Integer
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
-from .helpers import dumps
 from .helpers import ManagerTestBase
+from .helpers import dumps
 
 
 class TestAdding(ManagerTestBase):

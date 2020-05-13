@@ -22,12 +22,6 @@ from __future__ import division
 
 import unittest
 from datetime import datetime
-try:
-    from flask_sqlalchemy import SQLAlchemy
-except ImportError:
-    has_flask_sqlalchemy = False
-else:
-    has_flask_sqlalchemy = True
 
 from sqlalchemy import Column
 from sqlalchemy import Date
@@ -41,16 +35,26 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
-from flask_restless import APIManager
 from flask_restless import CONTENT_TYPE
+from flask_restless import APIManager
 from flask_restless import ProcessingException
 
 from .helpers import BetterJSONEncoder as JSONEncoder
+from .helpers import FlaskSQLAlchemyTestBase
+from .helpers import ManagerTestBase
 from .helpers import check_sole_error
 from .helpers import dumps
-from .helpers import FlaskSQLAlchemyTestBase
 from .helpers import loads
-from .helpers import ManagerTestBase
+
+try:
+    from flask_sqlalchemy import SQLAlchemy
+except ImportError:
+    has_flask_sqlalchemy = False
+else:
+    has_flask_sqlalchemy = True
+
+
+
 
 
 class TestUpdating(ManagerTestBase):

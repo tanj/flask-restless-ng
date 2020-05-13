@@ -28,6 +28,11 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import validates
 
+from .helpers import ManagerTestBase
+from .helpers import check_sole_error
+from .helpers import dumps
+from .helpers import loads
+
 # for SAValidation package on pypi.python.org
 try:
     import savalidation as _sav
@@ -37,10 +42,6 @@ except ImportError:
 else:
     has_savalidation = True
 
-from .helpers import check_sole_error
-from .helpers import dumps
-from .helpers import loads
-from .helpers import ManagerTestBase
 
 
 class CoolValidationError(Exception):

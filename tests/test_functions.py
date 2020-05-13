@@ -13,9 +13,9 @@
 from sqlalchemy import Column
 from sqlalchemy import Integer
 
+from .helpers import ManagerTestBase
 from .helpers import dumps
 from .helpers import loads
-from .helpers import ManagerTestBase
 
 
 class TestFunctionEvaluation(ManagerTestBase):

@@ -1,15 +1,22 @@
 import cProfile
-import time
 import pstats
+import time
 import unittest
 
 from flask import Flask
-from sqlalchemy import Column, ForeignKey, Integer, String, Unicode, create_engine
+from sqlalchemy import Column
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import Unicode
+from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import backref, relationship, scoped_session, sessionmaker
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import sessionmaker
 
 from flask_restless import APIManager
-
 
 Base = declarative_base()
 

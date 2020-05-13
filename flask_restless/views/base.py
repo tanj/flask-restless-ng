@@ -19,13 +19,12 @@ for JSON API requests on a SQLAlchemy backend.
 """
 from __future__ import division
 
+import math
+import re
 from collections import defaultdict
 from functools import partial
 from functools import wraps
 from itertools import chain
-import math
-import re
-
 from urllib.parse import urlparse
 from urllib.parse import urlunparse
 
@@ -40,8 +39,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.query import Query
-from werkzeug.http import parse_options_header
 from werkzeug.exceptions import HTTPException
+from werkzeug.http import parse_options_header
 
 from ..helpers import collection_name
 from ..helpers import get_model
@@ -51,12 +50,12 @@ from ..helpers import primary_key_value
 from ..helpers import serializer_for
 from ..helpers import url_for
 from ..search import ComparisonToNull
+from ..search import UnknownField
 from ..search import search
 from ..search import search_relationship
-from ..search import UnknownField
-from ..serialization import simple_relationship_serialize
 from ..serialization import DeserializationException
 from ..serialization import SerializationException
+from ..serialization import simple_relationship_serialize
 from .helpers import count
 from .helpers import upper_keys as upper
 

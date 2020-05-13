@@ -20,8 +20,8 @@ from flask import json
 from flask import request
 from sqlalchemy.exc import OperationalError
 
-from .base import error_response
 from .base import ModelView
+from .base import error_response
 from .helpers import evaluate_functions
 
 

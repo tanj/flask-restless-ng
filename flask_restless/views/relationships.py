@@ -25,10 +25,10 @@ from ..helpers import get_by
 from ..helpers import get_related_model
 from ..helpers import is_like_list
 from .base import APIBase
+from .base import SingleKeyError
 from .base import error
 from .base import error_response
 from .base import errors_response
-from .base import SingleKeyError
 
 
 class RelationshipAPI(APIBase):

@@ -16,9 +16,10 @@ from sqlalchemy import Column
 from sqlalchemy import Integer
 
 from flask_restless import ProcessingException
+
+from .helpers import ManagerTestBase
 from .helpers import dumps
 from .helpers import loads
-from .helpers import ManagerTestBase
 
 
 @unittest.skip('Not yet implemented')

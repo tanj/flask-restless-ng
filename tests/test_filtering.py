@@ -16,13 +16,6 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 
-# This import is unused but is required for testing on PyPy. CPython can
-# use psycopg2, but PyPy can only use psycopg2cffi.
-try:
-    import psycopg2  # noqa
-except ImportError:
-    from psycopg2cffi import compat
-    compat.register()
 from sqlalchemy import Column
 from sqlalchemy import Date
 from sqlalchemy import DateTime
@@ -36,10 +29,19 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 from testing.postgresql import PostgresqlFactory as PGFactory
 
+from .helpers import ManagerTestBase
 from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import loads
-from .helpers import ManagerTestBase
+
+# This import is unused but is required for testing on PyPy. CPython can
+# use psycopg2, but PyPy can only use psycopg2cffi.
+try:
+    import psycopg2  # noqa
+except ImportError:
+    from psycopg2cffi import compat
+    compat.register()
+
 
 
 #: The PostgreSQL class used to create a temporary database for testing.

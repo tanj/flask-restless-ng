@@ -10,25 +10,18 @@
 # License version 3 and under the 3-clause BSD license. For more
 # information, see LICENSE.AGPL and LICENSE.BSD.
 """Helper functions for unit tests."""
+import types
+import unittest
+import uuid
 from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
 from functools import wraps
 from json import JSONEncoder
-import types
-import uuid
-import unittest
 
 from flask import Flask
 from flask import json
-try:
-    import flask_sqlalchemy
-    from flask_sqlalchemy import SQLAlchemy
-except ImportError:
-    has_flask_sqlalchemy = False
-else:
-    has_flask_sqlalchemy = True
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy.dialects.postgresql import UUID
@@ -39,8 +32,17 @@ from sqlalchemy.orm.session import Session as SessionBase
 from sqlalchemy.types import CHAR
 from sqlalchemy.types import TypeDecorator
 
-from flask_restless import APIManager
 from flask_restless import CONTENT_TYPE
+from flask_restless import APIManager
+
+try:
+    import flask_sqlalchemy
+    from flask_sqlalchemy import SQLAlchemy
+except ImportError:
+    has_flask_sqlalchemy = False
+else:
+    has_flask_sqlalchemy = True
+
 
 dumps = json.dumps
 loads = json.loads

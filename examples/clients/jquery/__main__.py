@@ -38,10 +38,10 @@
 import os
 import os.path
 
-from flask import Flask, render_template
+from flask import Flask
+from flask import render_template
 from flask.ext.restless import APIManager
 from flask.ext.sqlalchemy import SQLAlchemy
-
 
 # Step 0: the database in this example is at './test.sqlite'.
 DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)),

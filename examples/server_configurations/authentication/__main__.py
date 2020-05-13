@@ -40,11 +40,22 @@
 import os
 import os.path
 
-from flask import Flask, render_template, redirect, url_for
-from flask.ext.login import current_user, login_user, LoginManager, UserMixin
-from flask.ext.restless import APIManager, ProcessingException, NO_CHANGE
+from flask import Flask
+from flask import redirect
+from flask import render_template
+from flask import url_for
+from flask.ext.login import LoginManager
+from flask.ext.login import UserMixin
+from flask.ext.login import current_user
+from flask.ext.login import login_user
+from flask.ext.restless import NO_CHANGE
+from flask.ext.restless import APIManager
+from flask.ext.restless import ProcessingException
 from flask.ext.sqlalchemy import SQLAlchemy
-from flask.ext.wtf import PasswordField, SubmitField, TextField, Form
+from flask.ext.wtf import Form
+from flask.ext.wtf import PasswordField
+from flask.ext.wtf import SubmitField
+from flask.ext.wtf import TextField
 
 # Step 0: the database in this example is at './test.sqlite'.
 DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)),

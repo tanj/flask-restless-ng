@@ -10,11 +10,13 @@
     :copyright: (c) 2011 by Armin Ronacher.
     :license: BSD, see LICENSE for more details.
 """
-import sys
 import os
 import re
-from datetime import datetime, date
-from subprocess import Popen, PIPE
+import sys
+from datetime import date
+from datetime import datetime
+from subprocess import PIPE
+from subprocess import Popen
 
 _date_clean_re = re.compile(r'(\d+)(st|nd|rd|th)')
 

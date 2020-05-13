@@ -11,7 +11,18 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import os
+import sys
+
+# The version info for the project you're documenting, acts as replacement for
+# |version| and |release|, also used in various other places throughout the
+# built documents.
+#
+# The short X.Y version.
+#version = '0.3'
+# The full version, including alpha/beta/rc tags.
+#release = '0.3-dev'
+import pkg_resources
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -49,15 +60,6 @@ master_doc = 'index'
 project = u'Flask-Restless'
 copyright = u'2012, 2013, 2014, 2015, 2016 Jeffrey Finkelstein and contributors'
 
-# The version info for the project you're documenting, acts as replacement for
-# |version| and |release|, also used in various other places throughout the
-# built documents.
-#
-# The short X.Y version.
-#version = '0.3'
-# The full version, including alpha/beta/rc tags.
-#release = '0.3-dev'
-import pkg_resources
 try:
     release = pkg_resources.get_distribution('Flask-Restless').version
 except pkg_resources.DistributionNotFound:

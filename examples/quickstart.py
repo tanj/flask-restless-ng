@@ -1,5 +1,6 @@
 import flask
 import flask_sqlalchemy
+
 import flask_restless
 
 # Create the Flask application and the Flask-SQLAlchemy object.

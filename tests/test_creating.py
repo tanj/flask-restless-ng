@@ -38,18 +38,18 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
-from flask_restless import APIManager
 from flask_restless import CONTENT_TYPE
+from flask_restless import APIManager
 from flask_restless import DeserializationException
 from flask_restless import SerializationException
 from flask_restless import simple_serialize
 
 from .helpers import BetterJSONEncoder as JSONEncoder
+from .helpers import FlaskSQLAlchemyTestBase
+from .helpers import ManagerTestBase
 from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import loads
-from .helpers import FlaskSQLAlchemyTestBase
-from .helpers import ManagerTestBase
 
 
 def raise_s_exception(instance, *args, **kw):

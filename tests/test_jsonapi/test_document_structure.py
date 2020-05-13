@@ -19,19 +19,22 @@ of the JSON API specification.
 
 """
 import string
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
 
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy.orm import relationship
 
+from ..helpers import ManagerTestBase
 from ..helpers import dumps
 from ..helpers import loads
-from ..helpers import ManagerTestBase
+
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
+
+
 
 
 class TestDocumentStructure(ManagerTestBase):

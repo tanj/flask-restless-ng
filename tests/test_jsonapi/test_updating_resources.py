@@ -23,14 +23,14 @@ from operator import attrgetter
 from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
-from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import Unicode
+from sqlalchemy import func
 from sqlalchemy.orm import relationship
 
+from ..helpers import ManagerTestBase
 from ..helpers import dumps
 from ..helpers import loads
-from ..helpers import ManagerTestBase
 
 
 class TestUpdatingResources(ManagerTestBase):

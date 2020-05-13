@@ -19,14 +19,15 @@ SQLAlchemy models via the JSON API protocol.
 #: file.
 __version__ = '0.0.2'
 
+
 # The following names are available as part of the public API for
 # Flask-Restless. End users of this package can import these names by doing
 # ``from flask.ext.restless import APIManager``, for example.
 from .helpers import collection_name
 from .helpers import model_for
+from .helpers import primary_key_for
 from .helpers import serializer_for
 from .helpers import url_for
-from .helpers import primary_key_for
 from .manager import APIManager
 from .manager import IllegalArgumentError
 from .serialization import DeserializationException

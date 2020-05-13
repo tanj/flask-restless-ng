@@ -14,8 +14,8 @@
 
 """
 import flask
-import flask.ext.sqlalchemy
 import flask.ext.restless
+import flask.ext.sqlalchemy
 
 # Create the Flask application and the Flask-SQLAlchemy object.
 app = flask.Flask(__name__)

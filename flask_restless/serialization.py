@@ -38,7 +38,6 @@ from werkzeug.urls import url_quote_plus
 
 from .helpers import attribute_columns
 from .helpers import collection_name
-from .helpers import is_mapped_class
 from .helpers import foreign_keys
 from .helpers import get_by
 from .helpers import get_model
@@ -46,6 +45,7 @@ from .helpers import get_related_model
 from .helpers import get_relations
 from .helpers import has_field
 from .helpers import is_like_list
+from .helpers import is_mapped_class
 from .helpers import primary_key_for
 from .helpers import primary_key_names
 from .helpers import primary_key_value

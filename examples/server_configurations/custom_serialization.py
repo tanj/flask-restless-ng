@@ -12,8 +12,9 @@
 
 """
 from flask import Flask
-from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext.restless import APIManager
+from flask.ext.sqlalchemy import SQLAlchemy
+
 from marshmallow import Schema
 from marshmallow import fields
 

@@ -19,7 +19,6 @@ specification.
 
 """
 import unittest
-
 from operator import itemgetter
 
 from sqlalchemy import Column
@@ -34,11 +33,11 @@ from flask_restless import APIManager
 from flask_restless import ProcessingException
 from flask_restless import simple_serialize
 
+from .helpers import FlaskSQLAlchemyTestBase
+from .helpers import ManagerTestBase
 from .helpers import check_sole_error
 from .helpers import dumps
-from .helpers import FlaskSQLAlchemyTestBase
 from .helpers import loads
-from .helpers import ManagerTestBase
 
 
 class TestFetchCollection(ManagerTestBase):

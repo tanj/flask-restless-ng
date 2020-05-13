@@ -29,7 +29,9 @@ code`_ repository.
 import codecs
 import os.path
 import re
-from setuptools import setup, find_packages
+
+from setuptools import find_packages
+from setuptools import setup
 
 #: A regular expression capturing the version number from Python code.
 VERSION_RE = r"^__version__ = ['\"]([^'\"]*)['\"]"

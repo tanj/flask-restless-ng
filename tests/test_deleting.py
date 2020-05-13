@@ -29,10 +29,10 @@ from sqlalchemy.orm import relationship
 from flask_restless import APIManager
 from flask_restless import ProcessingException
 
-from .helpers import dumps
-from .helpers import loads
 from .helpers import FlaskSQLAlchemyTestBase
 from .helpers import ManagerTestBase
+from .helpers import dumps
+from .helpers import loads
 
 
 class TestDeleting(ManagerTestBase):

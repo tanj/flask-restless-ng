@@ -19,16 +19,17 @@ section of the JSON API specification.
 
 """
 import unittest
+
 from sqlalchemy import Column
-from sqlalchemy import Unicode
 from sqlalchemy import Integer
+from sqlalchemy import Unicode
 
 from flask_restless import CONTENT_TYPE
 
+from ..helpers import ManagerTestBase
 from ..helpers import check_sole_error
 from ..helpers import dumps
 from ..helpers import loads
-from ..helpers import ManagerTestBase
 
 
 class TestServerResponsibilities(ManagerTestBase):

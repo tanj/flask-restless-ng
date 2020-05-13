@@ -27,8 +27,8 @@ from .helpers import model_for
 from .helpers import primary_key_for
 from .helpers import serializer_for
 from .helpers import url_for
-from .serialization import FastSerializer
 from .serialization import DefaultDeserializer
+from .serialization import FastSerializer
 from .views import API
 from .views import FunctionAPI
 from .views import RelationshipAPI

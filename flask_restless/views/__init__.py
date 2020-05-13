@@ -19,9 +19,9 @@ that do most of the work.
 """
 from .base import CONTENT_TYPE
 from .base import ProcessingException
-from .resources import API
-from .relationships import RelationshipAPI
 from .function import FunctionAPI
+from .relationships import RelationshipAPI
+from .resources import API
 
 __all__ = [
     CONTENT_TYPE,
