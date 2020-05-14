@@ -432,7 +432,7 @@ class TestFetchResource(ManagerTestBase):
 class TestFetchRelation(ManagerTestBase):
 
     def setUp(self):
-        super(TestFetchRelation, self).setUp()
+        super().setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'

@@ -33,7 +33,6 @@ from sqlalchemy import Column
 from sqlalchemy.exc import NoInspectionAvailable
 from sqlalchemy.ext.hybrid import HYBRID_PROPERTY
 from sqlalchemy.inspection import inspect
-from werkzeug.routing import BuildError
 from werkzeug.urls import url_quote_plus
 
 from .helpers import attribute_columns
@@ -563,20 +562,9 @@ class DefaultSerializer(Serializer):
         if ((self.default_fields is None or 'self' in self.default_fields)
                 and (only is None or 'self' in only)):
             instance_id = primary_key_value(instance)
-            # `url_for` may raise a `BuildError` if the user has not created a
-            # GET API endpoint for this model. In this case, we simply don't
-            # provide a self link.
-            #
-            # TODO This might fail if the user has set the
-            # `current_app.build_error_handler` attribute, in which case, the
-            # exception may not be raised.
-            try:
-                path = url_for(model, instance_id, _method='GET')
-            except BuildError:
-                pass
-            else:
-                url = urljoin(request.url_root, path)
-                result['links'] = dict(self=url)
+            path = url_for(model, instance_id, _method='GET')
+            url = urljoin(request.url_root, path)
+            result['links'] = dict(self=url)
         # # add any included methods
         # if include_methods is not None:
         #     for method in include_methods:
@@ -751,20 +739,9 @@ class FastSerializer(Serializer):
         if ((self._only is None or 'self' in self._only)
                 and (only is None or 'self' in only)):
             instance_id = primary_key_value(instance)
-            # `url_for` may raise a `BuildError` if the user has not created a
-            # GET API endpoint for this model. In this case, we simply don't
-            # provide a self link.
-            #
-            # TODO This might fail if the user has set the
-            # `current_app.build_error_handler` attribute, in which case, the
-            # exception may not be raised.
-            try:
-                path = url_for(self._model, instance_id, _method='GET')
-            except BuildError:
-                pass
-            else:
-                url = urljoin(request.url_root, path)
-                result['links'] = dict(self=url)
+            path = url_for(self._model, instance_id, _method='GET')
+            url = urljoin(request.url_root, path)
+            result['links'] = dict(self=url)
 
         return result
 
