@@ -648,7 +648,7 @@ class APIManager(object):
         #
         # Rename some variables with long names for the sake of brevity.
         atmr = allow_to_many_replacement
-        api_view = API.as_view(apiname, session, model,
+        api_view = API.as_view(apiname, self, model,
                                # Keyword arguments for APIBase.__init__()
                                preprocessors=preprocessors_,
                                postprocessors=postprocessors_,
@@ -678,13 +678,11 @@ class APIManager(object):
         add_rule = blueprint.add_url_rule
 
         # The URLs that will be routed below.
-        collection_url = '/{0}'.format(collection_name)
-        resource_url = '{0}/<resource_id>'.format(collection_url)
-        related_resource_url = '{0}/<relation_name>'.format(resource_url)
-        to_many_resource_url = \
-            '{0}/<related_resource_id>'.format(related_resource_url)
-        relationship_url = \
-            '{0}/relationships/<relation_name>'.format(resource_url)
+        collection_url = f'/{collection_name}'
+        resource_url = f'{collection_url}/<resource_id>'
+        related_resource_url = f'{resource_url}/<relation_name>'
+        to_many_resource_url = f'{related_resource_url}/<related_resource_id>'
+        relationship_url = f'{resource_url}/relationships/<relation_name>'
 
         # Create relationship URL endpoints.
         #
@@ -694,19 +692,19 @@ class APIManager(object):
         # :http:get:`/api/articles/1/relationships/author` interpret the
         # word `relationships` as the name of a relation of an article
         # object.
-        relationship_api_name = f'{apiname}_relationships'
-        rapi_view = RelationshipAPI.as_view
         adftmr = allow_delete_from_to_many_relationships
-        relationship_api_view = \
-            rapi_view(relationship_api_name, session, model,
-                      # Keyword arguments for APIBase.__init__()
-                      preprocessors=preprocessors_,
-                      postprocessors=postprocessors_,
-                      primary_key=primary_key,
-                      validation_exceptions=validation_exceptions,
-                      allow_to_many_replacement=allow_to_many_replacement,
-                      # Keyword arguments RelationshipAPI.__init__()
-                      allow_delete_from_to_many_relationships=adftmr)
+        relationship_api_view = RelationshipAPI.as_view(
+            f'{apiname}_relationships',
+            api=self,
+            model=model,
+            # Keyword arguments for APIBase.__init__()
+            preprocessors=preprocessors_,
+            postprocessors=postprocessors_,
+            primary_key=primary_key,
+            validation_exceptions=validation_exceptions,
+            allow_to_many_replacement=allow_to_many_replacement,
+            # Keyword arguments RelationshipAPI.__init__()
+            allow_delete_from_to_many_relationships=adftmr)
         # When PATCH is allowed, certain non-PATCH requests are allowed
         # on relationship URLs.
         relationship_methods = READONLY_METHODS & methods
@@ -762,7 +760,7 @@ class APIManager(object):
         # evaluating functions on all instances of the specified model
         if allow_functions:
             eval_api_name = f'{apiname}_eval'
-            eval_api_view = FunctionAPI.as_view(eval_api_name, session, model)
+            eval_api_view = FunctionAPI.as_view(eval_api_name, self, model)
             eval_endpoint = '/eval{0}'.format(collection_url)
             eval_methods = ['GET']
             blueprint.add_url_rule(eval_endpoint, methods=eval_methods,

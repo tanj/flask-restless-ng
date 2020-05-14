@@ -1053,9 +1053,10 @@ class ModelView(MethodView):
     decorators = [requires_json_api_accept, requires_json_api_mimetype,
                   mimerender]
 
-    def __init__(self, session, model, *args, **kw):
-        super(ModelView, self).__init__(*args, **kw)
-        self.session = session
+    def __init__(self, api, model, *args, **kw):
+        super().__init__(*args, **kw)
+        self.api = api
+        self.session = api.session
         self.model = model
 
 
@@ -1079,12 +1080,11 @@ class APIBase(ModelView):
     #: List of decorators applied to every method of this class.
     decorators = [catch_processing_exceptions] + ModelView.decorators
 
-    def __init__(self, session, model, preprocessors=None, postprocessors=None,
+    def __init__(self, *args, preprocessors=None, postprocessors=None,
                  primary_key=None, serializer=None, deserializer=None,
                  validation_exceptions=None, includes=None, page_size=10,
-                 max_page_size=100, allow_to_many_replacement=False, *args,
-                 **kw):
-        super(APIBase, self).__init__(session, model, *args, **kw)
+                 max_page_size=100, allow_to_many_replacement=False, **kw):
+        super().__init__(*args, **kw)
 
         #: The name of the collection specified by the given model class
         #: to be used in the URL for the ReSTful API created.

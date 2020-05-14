@@ -57,7 +57,7 @@ class API(APIBase):
     """
 
     def __init__(self, *args, **kw):
-        super(API, self).__init__(*args, **kw)
+        super().__init__(*args, **kw)
 
         #: Whether any side-effect changes are made to the SQLAlchemy
         #: model on updates.

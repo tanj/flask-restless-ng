@@ -48,9 +48,9 @@ class RelationshipAPI(APIBase):
 
     """
 
-    def __init__(self, session, model,
+    def __init__(self, api, model,
                  allow_delete_from_to_many_relationships=False, *args, **kw):
-        super(RelationshipAPI, self).__init__(session, model, *args, **kw)
+        super(RelationshipAPI, self).__init__(api, model, *args, **kw)
         self.allow_delete_from_to_many_relationships = \
             allow_delete_from_to_many_relationships
 
