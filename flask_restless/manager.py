@@ -17,20 +17,28 @@ their SQLAlchemy models.
 """
 from collections import defaultdict
 from collections import namedtuple
+from itertools import chain
 from uuid import uuid1
 
 from flask import Blueprint
+from sqlalchemy.orm import Query
 
+from .views.base import JSONAPI_VERSION
+from .views.base import resources_from_path
+from .exceptions import NotFound
+from .helpers import get_by
 from .helpers import collection_name
 from .helpers import model_for
 from .helpers import primary_key_for
 from .helpers import serializer_for
 from .helpers import url_for
+from .serialization import SerializationException
 from .serialization import DefaultDeserializer
 from .serialization import FastSerializer
 from .views import API
 from .views import FunctionAPI
 from .views import RelationshipAPI
+from .views.base import MultipleExceptions
 
 #: The names of HTTP methods that allow fetching information.
 READONLY_METHODS = frozenset(('GET', ))
@@ -640,7 +648,6 @@ class APIManager(object):
             serializer = FastSerializer(model, collection_name, primary_key=primary_key,
                                         only=only, exclude=exclude, additional_attributes=additional_attributes)
 
-        session = self.session
         if deserializer is None:
             deserializer = DefaultDeserializer(self.session, model,
                                                allow_client_generated_ids)
@@ -834,3 +841,65 @@ class APIManager(object):
         # application.
         if self.app is not None:
             self.app.register_blueprint(blueprint)
+
+    # Helpers
+    # =======
+
+    def serialize(self, instance, only=None, sparse_fields=None):
+        model = type(instance)
+        serialize = self.serializer_for(model)
+        # This may raise ValueError
+        _type = collection_name(model)
+        only = sparse_fields.get(_type) if sparse_fields else None
+        try:
+            result = serialize(instance, only=only)
+        except SerializationException as e:
+            raise MultipleExceptions([e])
+
+        return result
+
+    def serialize_many(self, instances, only=None, sparse_fields=None):
+        # TODO: minor performance gain if we do not look-up serializer for each instance separately
+        return [self.serialize(instance, only, sparse_fields=sparse_fields) for instance in instances]
+
+    def get_all_inclusions(self, instance_or_instances, include, sparse_fields=None):
+        # TODO: refactor
+        # If `instance_or_instances` is actually just a single instance
+        # of a SQLAlchemy model, get the resources to include for that
+        # one instance. Otherwise, collect the resources to include for
+        # each instance in `instances`.
+        to_include = set()
+        if isinstance(instance_or_instances, Query):
+            to_include = set(chain(self.resources_to_include(resource)
+                                   for resource in instance_or_instances))
+        else:
+            for path in include:
+                to_include |= set(resources_from_path(instance_or_instances, path))
+
+        # TODO: only?
+        return self.serialize_many(to_include, sparse_fields=sparse_fields)
+
+    # View functions
+    # ==============
+
+    def get_resource(self, model, resource_id, only=None, include=None, sparse_fields=None):
+        primary_key = primary_key_for(model)
+        resource = get_by(self.session, model, resource_id, primary_key)
+        if resource is None:
+            raise NotFound(f'No resource with ID {resource_id}')
+
+        data = self.serialize(resource, only=only, sparse_fields=sparse_fields)
+
+        # Prepare the dictionary that will contain the JSON API response.
+        result = {'jsonapi': {'version': JSONAPI_VERSION}, 'meta': {},
+                  'links': {}, 'data': data}
+        # Determine the top-level links.
+
+        result['links']['self'] = self.url_for(model)
+
+        # Include any requested resources in a compound document.
+        included = self.get_all_inclusions(resource, include=include, sparse_fields=sparse_fields)
+        if included:
+            result['included'] = included
+
+        return result

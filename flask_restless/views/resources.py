@@ -259,12 +259,19 @@ class API(APIBase):
             if temp_result is not None:
                 resource_id = temp_result
         # Get the resource with the specified ID.
-        resource = get_by(self.session, self.model, resource_id,
-                          self.primary_key)
-        if resource is None:
-            detail = 'No resource with ID {0}'.format(resource_id)
-            return error_response(404, detail=detail)
-        return self._get_resource_helper(resource)
+        include = request.args.get('include')
+        if include is None:
+            if self.default_includes is None:
+                include = {}
+            else:
+                include = self.default_includes
+        else:
+            include = set(include.split(','))
+        result = self.api.get_resource(model=self.model, resource_id=resource_id, include=include, sparse_fields=self.sparse_fields)
+
+        for postprocessor in self.postprocessors['GET_RESOURCE']:
+            postprocessor(result=result)
+        return result, 200
 
     def _get_collection(self):
         """Returns a response containing a collection of resources of the type

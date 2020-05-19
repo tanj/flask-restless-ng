@@ -42,6 +42,7 @@ from sqlalchemy.orm.query import Query
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import parse_options_header
 
+from ..exceptions import APIError
 from ..helpers import collection_name
 from ..helpers import get_model
 from ..helpers import is_like_list
@@ -754,8 +755,7 @@ def error_from_serialization_exception(exception, included=False):
         detail = exception.message
     else:
         resource = 'included resource' if included else 'resource'
-        detail = 'Failed to serialize {0} of type {1} and ID {2}'
-        detail = detail.format(resource, type_, id_)
+        detail = f'Failed to serialize {resource} of type {type_} and ID {id_}'
     return error(status=500, detail=detail)
 
 
@@ -1055,9 +1055,24 @@ class ModelView(MethodView):
 
     def __init__(self, api, model, *args, **kw):
         super().__init__(*args, **kw)
-        self.api = api
+        self.api = api # type: APIManager
         self.session = api.session
         self.model = model
+
+    def dispatch_request(self, *args, **kwargs):
+        # self.session.bind.echo = True
+        try:
+            return super().dispatch_request(*args, **kwargs)
+        except APIError as e:
+            return error_response(e.status_code, cause=e.cause, detail=e.detail)
+        except MultipleExceptions as e:
+            return errors_from_serialization_exceptions(e.exceptions)
+        except Exception as e:
+            # TODO this is for debug only
+            print(e)
+            raise
+        finally:
+            pass # self.session.bind.echo = False
 
 
 class APIBase(ModelView):
