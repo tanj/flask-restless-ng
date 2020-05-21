@@ -13,3 +13,7 @@ class APIError(Exception):
 class NotFound(APIError):
     """Exception thrown when a requested resource was not found"""
     status_code = 404
+
+
+class BadRequest(APIError):
+    status_code = 400

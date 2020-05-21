@@ -16,6 +16,8 @@ The main class in this module, :class:`API`, is a
 SQLAlchemy models compatible with the JSON API specification.
 
 """
+from json import JSONDecodeError
+
 from flask import json
 from flask import request
 from werkzeug.exceptions import BadRequest
@@ -31,7 +33,12 @@ from ..serialization import ClientGeneratedIDNotAllowed
 from ..serialization import ConflictingType
 from ..serialization import DeserializationException
 from ..serialization import SerializationException
+from .base import FILTER_PARAM
+from .base import GROUP_PARAM
 from .base import JSONAPI_VERSION
+from .base import PAGE_NUMBER_PARAM
+from .base import PAGE_SIZE_PARAM
+from .base import SORT_PARAM
 from .base import APIBase
 from .base import MultipleExceptions
 from .base import SingleKeyError
@@ -39,7 +46,24 @@ from .base import error
 from .base import error_response
 from .base import errors_from_serialization_exceptions
 from .base import errors_response
+from .base import parse_sparse_fields
 from .helpers import changes_on_update
+
+
+class QueryParameters:
+
+    def __init__(self):
+        self.sort = []
+        self.filters = []
+        self.group_by = []
+        self.include = None
+        self.sparse_fields = {}
+        self.single = False
+        self.base_url = ''
+
+        # Pagination
+        self.page_size = 0
+        self.page_number = 0
 
 
 class API(APIBase):
@@ -232,6 +256,17 @@ class API(APIBase):
                                              primary_resource=primary_resource,
                                              relation_name=relation_name)
 
+    def _get_include(self):
+        include = request.args.get('include')
+        if include is None:
+            if self.default_includes is None:
+                include = {}
+            else:
+                include = self.default_includes
+        else:
+            include = set(include.split(','))
+        return include
+
     def _get_resource(self, resource_id):
         """Returns a response containing a single resource with the specified
         ID.
@@ -258,20 +293,55 @@ class API(APIBase):
             # instid.
             if temp_result is not None:
                 resource_id = temp_result
-        # Get the resource with the specified ID.
-        include = request.args.get('include')
-        if include is None:
-            if self.default_includes is None:
-                include = {}
-            else:
-                include = self.default_includes
-        else:
-            include = set(include.split(','))
+        include = self._get_include()
         result = self.api.get_resource(model=self.model, resource_id=resource_id, include=include, sparse_fields=self.sparse_fields)
 
         for postprocessor in self.postprocessors['GET_RESOURCE']:
             postprocessor(result=result)
         return result, 200
+
+    def _query_parameters(self):
+        parameters = QueryParameters()
+        try:
+            parameters.filters = json.loads(request.args.get(FILTER_PARAM, '[]'))
+        except JSONDecodeError:
+            raise BadRequest('Unable to decode filter objects as JSON list')
+
+        sort = request.args.get(SORT_PARAM)
+        if sort:
+            parameters.sort = [('-', value[1:]) if value.startswith('-') else ('+', value) for value in sort.split(',')]
+
+        # Determine grouping options.
+        group_by = request.args.get(GROUP_PARAM)
+        if group_by:
+            parameters.group_by = group_by.split(',')
+
+        # Determine whether the client expects a single resource response.
+        try:
+            parameters.single = bool(int(request.args.get('filter[single]', 0)))
+        except ValueError:
+            raise BadRequest('failed to extract Boolean from parameter')
+
+        include = request.args.get('include')
+        if include is None:
+            parameters.include = self.default_includes
+        else:
+            parameters.include = set(include.split(','))
+
+        parameters.sparse_fields = parse_sparse_fields()
+
+        page_size = int(request.args.get(PAGE_SIZE_PARAM, self.page_size))
+        if page_size < 0:
+            raise BadRequest('Page size must be a positive integer')
+        if page_size > self.max_page_size:
+            raise BadRequest(f"Page size must not exceed the server's maximum: {self.max_page_size}")
+        parameters.page_size = page_size
+
+        parameters.page_number = int(request.args.get(PAGE_NUMBER_PARAM, 1))
+        if parameters.page_number < 0:
+            raise BadRequest('Page number must be a positive integer')
+
+        return parameters
 
     def _get_collection(self):
         """Returns a response containing a collection of resources of the type
@@ -291,21 +361,27 @@ class API(APIBase):
         response in this method.
 
         """
-        try:
-            filters, sort, group_by, single = self._collection_parameters()
-        except (TypeError, ValueError, OverflowError) as exception:
-            detail = 'Unable to decode filter objects as JSON list'
-            return error_response(400, cause=exception, detail=detail)
-        except SingleKeyError as exception:
-            detail = 'Invalid format for filter[single] query parameter'
-            return error_response(400, cause=exception, detail=detail)
+        query_parameters = self._query_parameters()
 
         for preprocessor in self.preprocessors['GET_COLLECTION']:
-            preprocessor(filters=filters, sort=sort, group_by=group_by,
-                         single=single)
+            preprocessor(filters=query_parameters.filters, sort=query_parameters.sort, group_by=query_parameters.group_by, single=query_parameters.single)
 
-        return self._get_collection_helper(filters=filters, sort=sort,
-                                           group_by=group_by, single=single)
+        result = self.api.get_collection(model=self.model, query_parameters=query_parameters)
+
+        for postprocessor in self.postprocessors['GET_COLLECTION']:
+            postprocessor(result=result, filters=query_parameters.filters, sort=query_parameters.sort, group_by=query_parameters.group_by,
+                          single=query_parameters.single)
+        # Add the metadata to the JSON API response object.
+        #
+        # HACK Provide the headers directly in the result dictionary, so that
+        # the :func:`jsonpify` function has access to them. See the note there
+        # for more information. They don't really need to be under the ``meta``
+        # key, that's just for semantic consistency.
+        status = 200
+
+        result['meta']['__restless_status_code'] = status
+
+        return result, status, result['meta']['__restless_headers']
 
     def get(self, resource_id, relation_name, related_resource_id):
         """Returns the JSON document representing a resource or a collection of

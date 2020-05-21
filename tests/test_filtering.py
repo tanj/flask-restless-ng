@@ -200,14 +200,12 @@ class TestFiltering(SearchTestBase):
         request.
 
         """
-        person1 = self.Person(id=1)
-        person2 = self.Person(id=2)
-        self.session.add_all([person1, person2])
+        self.session.add_all([self.Person(id=1), self.Person(id=2)])
         self.session.commit()
         filters = [dict(name='id', op='equals', val='1')]
         response = self.search('/api/person', filters, single=True)
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
         person = document['data']
         assert person['id'] == '1'
 
@@ -498,7 +496,7 @@ class TestFiltering(SearchTestBase):
         self.session.commit()
         filters = [dict(name='bedtime', op='eq', val='19:00')]
         response = self.search('/api/person', filters)
-        document = loads(response.data)
+        document = response.json
         people = document['data']
         assert ['2'] == sorted(person['id'] for person in people)
 

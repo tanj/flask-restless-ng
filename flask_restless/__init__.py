@@ -20,6 +20,7 @@ SQLAlchemy models via the JSON API protocol.
 __version__ = '1.0.0'
 
 
+
 # The following names are available as part of the public API for
 # Flask-Restless. End users of this package can import these names by doing
 # ``from flask_restless import APIManager``, for example.

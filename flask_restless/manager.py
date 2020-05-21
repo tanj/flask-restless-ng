@@ -15,30 +15,39 @@ The :class:`APIManager` class allow users to create ReSTful APIs for
 their SQLAlchemy models.
 
 """
+import math
+from collections import Iterable
 from collections import defaultdict
 from collections import namedtuple
-from itertools import chain
 from uuid import uuid1
 
 from flask import Blueprint
-from sqlalchemy.orm import Query
+from sqlalchemy.orm.exc import MultipleResultsFound
+from sqlalchemy.orm.exc import NoResultFound
 
-from .views.base import JSONAPI_VERSION
-from .views.base import resources_from_path
+from .exceptions import BadRequest
 from .exceptions import NotFound
-from .helpers import get_by
 from .helpers import collection_name
+from .helpers import get_by
 from .helpers import model_for
 from .helpers import primary_key_for
+from .helpers import primary_key_names
 from .helpers import serializer_for
 from .helpers import url_for
-from .serialization import SerializationException
+from .search import ComparisonToNull
+from .search import UnknownField
+from .search import search
 from .serialization import DefaultDeserializer
 from .serialization import FastSerializer
+from .serialization import SerializationException
 from .views import API
 from .views import FunctionAPI
 from .views import RelationshipAPI
+from .views.base import JSONAPI_VERSION
 from .views.base import MultipleExceptions
+from .views.base import Paginated
+from .views.base import resources_from_path
+from .views.helpers import count
 
 #: The names of HTTP methods that allow fetching information.
 READONLY_METHODS = frozenset(('GET', ))
@@ -620,6 +629,11 @@ class APIManager(object):
             raise IllegalArgumentError(msg)
         if collection_name is None:
             collection_name = model.__table__.name
+
+        if primary_key is None:
+            pk_names = primary_key_names(model)
+            primary_key = 'id' if 'id' in pk_names else pk_names[0]
+
         # convert all method names to upper case
         methods = frozenset((m.upper() for m in methods))
         # the name of the API, for use in creating the view and the blueprint
@@ -845,22 +859,34 @@ class APIManager(object):
     # Helpers
     # =======
 
-    def serialize(self, instance, only=None, sparse_fields=None):
+    def serialize(self, instance, sparse_fields=None):
         model = type(instance)
         serialize = self.serializer_for(model)
         # This may raise ValueError
         _type = collection_name(model)
         only = sparse_fields.get(_type) if sparse_fields else None
+        return serialize(instance, only=only)
+
+    def serialize_one(self, instance, sparse_fields=None):
         try:
-            result = serialize(instance, only=only)
+            result = self.serialize(instance, sparse_fields=sparse_fields)
         except SerializationException as e:
             raise MultipleExceptions([e])
-
         return result
 
-    def serialize_many(self, instances, only=None, sparse_fields=None):
-        # TODO: minor performance gain if we do not look-up serializer for each instance separately
-        return [self.serialize(instance, only, sparse_fields=sparse_fields) for instance in instances]
+    def serialize_many(self, instances, sparse_fields=None):
+        # TODO: minor performance gain if we do not look-up serializer for each instance separately?
+        errors = []
+        result = []
+        for instance in instances:
+            try:
+                result.append(self.serialize(instance, sparse_fields=sparse_fields))
+            except SerializationException as e:
+                errors.append(e)
+        if errors:
+            raise MultipleExceptions(errors)
+
+        return result
 
     def get_all_inclusions(self, instance_or_instances, include, sparse_fields=None):
         # TODO: refactor
@@ -869,9 +895,10 @@ class APIManager(object):
         # one instance. Otherwise, collect the resources to include for
         # each instance in `instances`.
         to_include = set()
-        if isinstance(instance_or_instances, Query):
-            to_include = set(chain(self.resources_to_include(resource)
-                                   for resource in instance_or_instances))
+        if isinstance(instance_or_instances, Iterable):
+            for instance in instance_or_instances:
+                for path in include:
+                    to_include |= set(resources_from_path(instance, path))
         else:
             for path in include:
                 to_include |= set(resources_from_path(instance_or_instances, path))
@@ -879,16 +906,51 @@ class APIManager(object):
         # TODO: only?
         return self.serialize_many(to_include, sparse_fields=sparse_fields)
 
+    def paginate(self, query, query_parameters):
+
+        page_size = query_parameters.page_size
+        page_number = query_parameters.page_number
+
+        # If the page size is 0, just return everything.
+        if page_size == 0:
+            items = query.all()
+            num_results = len(items)
+            return Paginated(items, page_size=page_size, num_results=num_results)
+
+        offset = (page_number - 1) * page_size
+        items = query.limit(page_size).offset(offset).all()
+        if page_number == 1 and len(items) < page_size:
+            num_results = len(items)
+        else:
+            num_results = count(self.session, query)  # query.order_by(None).count() ?
+        first = 1
+        # Handle a special case for an empty collection of items.
+        #
+        # There will be no division-by-zero error here because we
+        # have already checked that page size is not equal to zero
+        # above.
+        if num_results == 0:
+            last = 1
+        else:
+            last = int(math.ceil(num_results / page_size))
+        prev = page_number - 1 if page_number > 1 else None
+        next_ = page_number + 1 if page_number < last else None
+        return Paginated(items, num_results=num_results, first=first,
+                         last=last, next_=next_, prev=prev,
+                         page_size=page_size, filters=query_parameters.filters, sort=query_parameters.sort,
+                         group_by=query_parameters.group_by)
+
+
     # View functions
     # ==============
 
-    def get_resource(self, model, resource_id, only=None, include=None, sparse_fields=None):
+    def get_resource(self, model, resource_id, include=None, sparse_fields=None):
         primary_key = primary_key_for(model)
         resource = get_by(self.session, model, resource_id, primary_key)
         if resource is None:
             raise NotFound(f'No resource with ID {resource_id}')
 
-        data = self.serialize(resource, only=only, sparse_fields=sparse_fields)
+        data = self.serialize_one(resource, sparse_fields=sparse_fields)
 
         # Prepare the dictionary that will contain the JSON API response.
         result = {'jsonapi': {'version': JSONAPI_VERSION}, 'meta': {},
@@ -901,5 +963,60 @@ class APIManager(object):
         included = self.get_all_inclusions(resource, include=include, sparse_fields=sparse_fields)
         if included:
             result['included'] = included
+
+        return result
+
+    def get_collection(self, model, query_parameters):
+        # Compute the result of the search on the model.
+        try:
+            query = search(self.session, model, filters=query_parameters.filters, sort=query_parameters.sort, group_by=query_parameters.group_by)
+        except ComparisonToNull as exception:
+            raise BadRequest(str(exception))
+        except UnknownField as exception:
+            raise BadRequest(f'Invalid filter object: No such field "{exception.field}"')
+        except Exception as exception:
+            raise BadRequest('Unable to construct query')
+
+        # Prepare the dictionary that will contain the JSON API response.
+        result = {'links': {'self': self.url_for(model)},
+                  'jsonapi': {'version': JSONAPI_VERSION},
+                  'meta': {}}
+
+        # Add the primary data (and any necessary links) to the JSON API
+        # response object.
+        #
+        # If the result of the search is a SQLAlchemy query object, we need to
+        # return a collection.
+        if not query_parameters.single:
+            paginated = self.paginate(query, query_parameters)
+            # Wrap the resulting object or list of objects under a `data` key.
+            result['data'] = self.serialize_many(paginated.items, sparse_fields=query_parameters.sparse_fields)
+            # Provide top-level links.
+            result['links'].update(paginated.pagination_links)
+            link_header = ','.join(paginated.header_links)
+            headers = dict(Link=link_header)
+            num_results = paginated.num_results
+            included = self.get_all_inclusions(paginated.items, include=query_parameters.include, sparse_fields=query_parameters.sparse_fields)
+        # Otherwise, the result of the search should be a single resource.
+        else:
+            try:
+                instance = query.one()
+            except NoResultFound:
+                raise NotFound('No result found')
+            except MultipleResultsFound:
+                raise NotFound('Multiple results found')
+            result['data'] = self.serialize_one(instance, sparse_fields=query_parameters.sparse_fields)
+            primary_key = self.primary_key_for(type(instance))
+            pk_value = result['data'][primary_key]
+            # The URL at which a client can access the instance matching this search query.
+            headers = dict(Location=f'{query_parameters.base_url}/{pk_value}')
+            num_results = 1
+            included = self.get_all_inclusions(instance, include=query_parameters.include, sparse_fields=query_parameters.sparse_fields)
+
+        if included:
+            result['included'] = included
+
+        result['meta']['__restless_headers'] = headers
+        result['meta']['total'] = num_results
 
         return result

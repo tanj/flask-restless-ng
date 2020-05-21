@@ -92,8 +92,7 @@ class TestFetchCollection(ManagerTestBase):
 
         query_string = {'filter[single]': 1}
         response = self.app.get('/api/person', query_string=query_string)
-        check_sole_error(response, 500, ['Failed to serialize', 'type',
-                                         'person', 'ID', '1'])
+        check_sole_error(response, 500, ['Failed to serialize', 'type', 'person', 'ID', '1'])
 
 
 class TestFetchResource(ManagerTestBase):
@@ -359,14 +358,14 @@ class TestFetchResource(ManagerTestBase):
         query_string = {'include': 'author'}
         response = self.app.get('/api/article', query_string=query_string)
         assert response.status_code == 500
-        document = loads(response.data)
+        document = response.json
         errors = document['errors']
         assert len(errors) == 2
         error1, error2 = errors
         assert error1['status'] == 500
         assert error2['status'] == 500
-        assert 'Failed to serialize included resource' in error1['detail']
-        assert 'Failed to serialize included resource' in error2['detail']
+        assert 'Failed to serialize resource' in error1['detail']
+        assert 'Failed to serialize resource' in error2['detail']
         assert 'ID 1' in error1['detail'] or 'ID 1' in error2['detail']
         assert 'ID 2' in error1['detail'] or 'ID 2' in error2['detail']
 

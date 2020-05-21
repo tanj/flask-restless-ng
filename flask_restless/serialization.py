@@ -626,9 +626,6 @@ class FastSerializer(Serializer):
 
         self._model = model
         self._type = type_name
-        if primary_key is None:
-            pk_names = primary_key_names(model)
-            primary_key = 'id' if 'id' in pk_names else pk_names[0]
         self._primary_key = primary_key
         self._relations = set(get_relations(model))
         self._only = None

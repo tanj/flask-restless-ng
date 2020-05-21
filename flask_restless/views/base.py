@@ -1107,9 +1107,8 @@ class APIBase(ModelView):
 
         #: The default set of related resources to include in compound
         #: documents, given as a set of relationship paths.
-        self.default_includes = includes
-        if self.default_includes is not None:
-            self.default_includes = frozenset(self.default_includes)
+        includes = includes or {}
+        self.default_includes = frozenset(includes)
 
         #: Whether to allow complete replacement of a to-many relationship when
         #: updating a resource.
