@@ -10,7 +10,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
 db = flask_sqlalchemy.SQLAlchemy(app)
 
 
-# Create your Flask-SQLALchemy models as usual but with the following
+# Create your Flask-SQLAlchemy models as usual but with the following
 # restriction: they must have an __init__ method that accepts keyword
 # arguments for all columns (the constructor in
 # flask.ext.sqlalchemy.SQLAlchemy.Model supplies such a method, so you

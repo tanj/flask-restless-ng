@@ -22,7 +22,7 @@ code`_ repository.
 .. _Flask-SQLAlchemy: https://pypi.python.org/pypi/Flask-SQLAlchemy
 .. _JSON API: http://jsonapi.org
 .. _documentation: https://flask-restless.readthedocs.org
-.. _pypi: https://pypi.python.org/pypi/Flask-Restless
+.. _pypi: https://pypi.python.org/pypi/Flask-Restless-NG
 .. _source code: https://github.com/mrevutskyi/flask-restless-ng
 
 """
@@ -95,7 +95,7 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
     description='A fork of Flask-Restless with updated dependencies and bug fixes',
-    download_url='https://pypi.python.org/pypi/Flask-Restless',
+    download_url='https://pypi.python.org/pypi/Flask-Restless-NG',
     install_requires=REQUIREMENTS,
     include_package_data=True,
     keywords=['ReST', 'API', 'Flask'],

@@ -1,5 +1,5 @@
-Flask-Restless
-==============
+Flask-Restless-NG
+=================
 
 **Flask-Restless** provides simple generation of ReSTful APIs for database
 models defined using SQLAlchemy (or Flask-SQLAlchemy). The generated APIs
@@ -12,8 +12,7 @@ satisfy the requirements of the `JSON API`_ specification.
 
    First, updating relationships via `association proxies`_ is not working
    correctly. We cannot support many-to-many relationships until this is
-   resolved. If you have any insight on how to fix this, please comment on
-   GitHub issue #480.
+   resolved.
 
    Second, we would like to make it easy to support serialization via third
    party serialization libraries such as `Marshmallow`_. In order to do this

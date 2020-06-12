@@ -1,6 +1,6 @@
 .. _customizing:
 
-.. currentmodule:: flask.ext.restless
+.. currentmodule:: flask_restless
 
 Customizing the ReSTful interface
 =================================
