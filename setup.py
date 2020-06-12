@@ -30,7 +30,6 @@ import codecs
 import os.path
 import re
 
-from setuptools import find_packages
 from setuptools import setup
 
 #: A regular expression capturing the version number from Python code.
@@ -38,10 +37,7 @@ VERSION_RE = r"^__version__ = ['\"]([^'\"]*)['\"]"
 
 # TODO We require Flask version 1.0 or greater if we want Flask to recognize
 # the JSON API mimetype as a form of JSON and therefore automatically be able
-# to deserialize JSON to Python via the Request.get_json() method. On the other
-# hand, we could keep the 0.10 requirement and simply rely on the ``force``
-# keyword argument of that method, which also works around the limitations in
-# MSIE8 and MSIE9...
+# to deserialize JSON to Python via the Request.get_json() method.
 
 #: The installation requirements for Flask-Restless. Flask-SQLAlchemy is not
 #: required, so the user must install it explicitly.
@@ -94,7 +90,7 @@ setup(
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
-    description='A fork of Flask-Restless with updated dependencies and bug fixes',
+    description='A fork of Flask-Restless with updated dependencpython setup.py develop --uninstallies and bug fixes',
     download_url='https://pypi.python.org/pypi/Flask-Restless-NG',
     install_requires=REQUIREMENTS,
     include_package_data=True,
@@ -104,7 +100,7 @@ setup(
     name='Flask-Restless-NG',
     platforms='any',
     python_requires='>=3.6',
-    packages=find_packages(),
+    packages=['flask_restless'],
     test_suite='tests',
     tests_require=[],
     url='https://github.com/mrevutskyi/flask-restless-ng',
