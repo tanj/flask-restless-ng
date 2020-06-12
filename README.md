@@ -38,7 +38,7 @@ For more information, see the
 [2]: https://jsonapi.org
 [3]: https://sqlalchemy.org
 [4]: https://packages.python.org/Flask-SQLAlchemy
-[5]: https://flask-restless.readthedocs.org
+[5]: https://flask-restless-ng.readthedocs.org
 [6]: https://pypi.python.org/pypi/Flask-Restless-NG
 [7]: https://github.com/mrevutskyi/flask-restless-ng
 

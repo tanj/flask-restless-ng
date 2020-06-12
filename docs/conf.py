@@ -42,6 +42,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
     'sphinxcontrib.httpdomain',
+    'pallets_sphinx_themes',
     # 'sphinxcontrib.issuetracker',
     ]
 
@@ -107,8 +108,7 @@ exclude_patterns = ['_build']
 #show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-#pygments_style = 'sphinx'
-pygments_style = 'flask_theme_support.FlaskyStyle'
+# pygments_style = 'flask_theme_support.FlaskyStyle'
 
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
@@ -118,7 +118,6 @@ pygments_style = 'flask_theme_support.FlaskyStyle'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#html_theme = 'default'
 html_theme = 'flask'
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -271,21 +270,6 @@ intersphinx_mapping = {
     'flasksqlalchemy': ('http://flask-sqlalchemy.pocoo.org', None),
     'flasklogin': ('https://flask-login.readthedocs.org/en/latest', None)
 }
-
-# fall back if theme is not there
-try:
-    __import__('flask_theme_support')
-except ImportError as e:
-    print('-' * 74)
-    print('Warning: Flask themes unavailable.  Building with default theme')
-    print('If you want the Flask themes, run this command and build again:')
-    print()
-    print('  git submodule update --init')
-    print('-' * 74)
-
-    pygments_style = 'tango'
-    html_theme = 'default'
-    html_theme_options = {}
 
 # Configuration for issuetracker extension.
 issuetracker = 'github'
