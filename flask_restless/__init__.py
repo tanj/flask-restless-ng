@@ -27,7 +27,6 @@ __version__ = '1.0.0'
 from .helpers import collection_name
 from .helpers import model_for
 from .helpers import primary_key_for
-from .helpers import serializer_for
 from .helpers import url_for
 from .manager import APIManager
 from .manager import IllegalArgumentError
@@ -35,14 +34,12 @@ from .serialization import DeserializationException
 from .serialization import Deserializer
 from .serialization import SerializationException
 from .serialization import Serializer
-from .serialization import simple_serialize
 from .views import CONTENT_TYPE
 from .views import ProcessingException
 
 __all__ = [
     collection_name,
     model_for,
-    serializer_for,
     url_for,
     primary_key_for,
     APIManager,
@@ -51,7 +48,6 @@ __all__ = [
     Deserializer,
     SerializationException,
     Serializer,
-    simple_serialize,
     CONTENT_TYPE,
     ProcessingException,
 ]

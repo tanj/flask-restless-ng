@@ -37,7 +37,6 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
 from flask_restless import SerializationException
-from flask_restless import simple_serialize
 
 from .helpers import GUID
 from .helpers import ManagerTestBase
@@ -248,7 +247,7 @@ class TestFetchResource(ManagerTestBase):
         self.session.commit()
 
         def serializer(instance, **kw):
-            result = simple_serialize(instance, **kw)
+            result = {'attributes': {}}
             result['attributes']['foo'] = 'bar'
             return result
 
@@ -271,19 +270,11 @@ class TestFetchResource(ManagerTestBase):
         self.session.add_all([person, article])
         self.session.commit()
 
-        def add_foo(instance, *args, **kw):
-            result = simple_serialize(instance, *args, **kw)
-            if 'attributes' not in result:
-                result['attributes'] = {}
-            result['attributes']['foo'] = 'foo'
-            return result
+        def add_foo(*args, **kw):
+            return {'attributes': {'foo': 'foo'}}
 
-        def add_bar(instance, *args, **kw):
-            result = simple_serialize(instance, *args, **kw)
-            if 'attributes' not in result:
-                result['attributes'] = {}
-            result['attributes']['bar'] = 'bar'
-            return result
+        def add_bar(*args, **kw):
+            return {'attributes': {'bar': 'bar'}}
 
         self.manager.create_api(self.Person, serializer=add_foo)
         self.manager.create_api(self.Article, serializer=add_bar)

@@ -42,7 +42,6 @@ from flask_restless import CONTENT_TYPE
 from flask_restless import APIManager
 from flask_restless import DeserializationException
 from flask_restless import SerializationException
-from flask_restless import simple_serialize
 
 from .helpers import BetterJSONEncoder as JSONEncoder
 from .helpers import FlaskSQLAlchemyTestBase
@@ -517,7 +516,7 @@ class TestCreating(ManagerTestBase):
         temp = []
 
         def serializer(instance, *args, **kw):
-            result = simple_serialize(instance)
+            result = {'attributes': {'foo': 'bar'}}
             result['attributes']['foo'] = temp.pop()
             return result
 
@@ -540,11 +539,8 @@ class TestCreating(ManagerTestBase):
         person = document['data']
         assert person['attributes']['foo'] == 'bar'
 
-    def test_serialization_exception_included(self):
-        """Tests that exceptions are caught when trying to serialize
-        included resources.
-
-        """
+    def test_serialization_included_raises_400(self):
+        """Tests that `included` query parameter causes 400 response code."""
         person = self.Person(id=1)
         self.session.add(person)
         self.session.commit()
@@ -565,11 +561,8 @@ class TestCreating(ManagerTestBase):
             }
         }
         query_string = {'include': 'author'}
-        response = self.app.post('/api/article', data=dumps(data),
-                                 query_string=query_string)
-        check_sole_error(response, 500, ['Failed to serialize',
-                                         'included resource', 'type', 'person',
-                                         'ID', '1'])
+        response = self.app.post('/api/article', json=data, query_string=query_string)
+        check_sole_error(response, 400, ['`include` is not supported'])
 
     def test_deserialization_exception(self):
         """Tests that exceptions are caught when a custom deserialization

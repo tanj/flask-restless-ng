@@ -20,8 +20,9 @@ from json import JSONDecodeError
 
 from flask import json
 from flask import request
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest as BadHTTPRequest
 
+from ..exceptions import BadRequest
 from ..helpers import collection_name
 from ..helpers import get_by
 from ..helpers import get_related_model
@@ -40,11 +41,9 @@ from .base import PAGE_NUMBER_PARAM
 from .base import PAGE_SIZE_PARAM
 from .base import SORT_PARAM
 from .base import APIBase
-from .base import MultipleExceptions
 from .base import SingleKeyError
 from .base import error
 from .base import error_response
-from .base import errors_from_serialization_exceptions
 from .base import errors_response
 from .base import parse_sparse_fields
 from .helpers import changes_on_update
@@ -453,10 +452,13 @@ class API(APIBase):
         format specified by the JSON API specification.
 
         """
+        if request.args.get('include'):
+            raise BadRequest('`include` is not supported in POST requests')
+
         # try to read the parameters for the model from the body of the request
         try:
             data = json.loads(request.get_data()) or {}
-        except (BadRequest, TypeError, ValueError, OverflowError) as exception:
+        except (BadHTTPRequest, TypeError, ValueError, OverflowError) as exception:
             detail = 'Unable to decode data'
             return error_response(400, cause=exception, detail=detail)
         # apply any preprocessors to the POST arguments
@@ -497,18 +499,7 @@ class API(APIBase):
         headers = dict(Location=url)
         # Wrap the resulting object or list of objects under a 'data' key.
         result = {'jsonapi': {'version': JSONAPI_VERSION}, 'data': data}
-        # Include any requested resources in a compound document.
-        try:
-            included = self.get_all_inclusions(instance)
-        except MultipleExceptions as e:
-            # By the way we defined `get_all_inclusions()`, we are
-            # guaranteed that each of the underlying exceptions is a
-            # `SerializationException`. Thus we can use
-            # `errors_from_serialization_exception()`.
-            return errors_from_serialization_exceptions(e.exceptions,
-                                                        included=True)
-        if included:
-            result['included'] = included
+
         status = 201
         for postprocessor in self.postprocessors['POST_RESOURCE']:
             postprocessor(result=result)

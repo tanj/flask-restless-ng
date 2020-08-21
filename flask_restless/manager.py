@@ -32,7 +32,6 @@ from .helpers import get_by
 from .helpers import model_for
 from .helpers import primary_key_for
 from .helpers import primary_key_names
-from .helpers import serializer_for
 from .helpers import url_for
 from .search import ComparisonToNull
 from .search import UnknownField
@@ -184,7 +183,6 @@ class APIManager(object):
         url_for.register(self)
         model_for.register(self)
         collection_name.register(self)
-        serializer_for.register(self)
         primary_key_for.register(self)
 
         #: A mapping whose keys are models for which this object has

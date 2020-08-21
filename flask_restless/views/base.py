@@ -48,11 +48,9 @@ from ..helpers import get_model
 from ..helpers import is_like_list
 from ..helpers import primary_key_for
 from ..helpers import primary_key_value
-from ..helpers import serializer_for
 from ..helpers import url_for
 from ..search import ComparisonToNull
 from ..search import UnknownField
-from ..search import search
 from ..search import search_relationship
 from ..serialization import DeserializationException
 from ..serialization import SerializationException
@@ -1229,7 +1227,7 @@ class APIBase(ModelView):
         current_app.logger.exception(str(exception))
         return errors_response(400, errors)
 
-    def _serialize_many(self, instances, relationship=False):
+    def _serialize_many(self, instances, relationship=False, model=None):
         """Serializes a list of SQLAlchemy objects.
 
         `instances` is a list of SQLAlchemy objects of any model class.
@@ -1257,7 +1255,7 @@ class APIBase(ModelView):
                 # current resource, even though the current model may
                 # different from the model of the current instance.
                 try:
-                    serialize = serializer_for(model)
+                    serialize = self.api.serializer_for(model)
                 except ValueError:
                     # TODO Should we fail instead, thereby effectively
                     # requiring that an API has been created for each
@@ -1374,7 +1372,7 @@ class APIBase(ModelView):
 
         return filters, sort, group_by, single
 
-    def _paginated(self, items, filters=None, sort=None, group_by=None):
+    def _paginated(self, items, filters=None, sort=None, group_by=None, model=None):
         """Returns a :class:`Paginated` object representing the
         correctly paginated list of resources to return to the client,
         based on the current request.
@@ -1409,7 +1407,7 @@ class APIBase(ModelView):
         is_relationship = self.use_resource_identifiers()
         # If the page size is 0, just return everything.
         if page_size == 0:
-            result = self._serialize_many(items, relationship=is_relationship)
+            result = self._serialize_many(items, relationship=is_relationship, model=model)
             # Use `len()` here instead of doing `count(self.session,
             # items)` because the former should be faster.
             num_results = len(result)
@@ -1540,15 +1538,9 @@ class APIBase(ModelView):
             raise ValueError('resource and relation must be both None or both'
                              ' not None')
         # Compute the result of the search on the model.
-        is_relation = resource is not None
-        if is_relation:
-            search_ = partial(search_relationship, self.session, resource,
-                              relation_name)
-        else:
-            search_ = partial(search, self.session, self.model)
+        is_relation = True
         try:
-            search_items = search_(filters=filters, sort=sort,
-                                   group_by=group_by)
+            search_items = search_relationship(self.session, resource, relation_name, filters=filters, sort=sort, group_by=group_by)
         except ComparisonToNull as exception:
             detail = str(exception)
             return error_response(400, cause=exception, detail=detail)
@@ -1572,8 +1564,7 @@ class APIBase(ModelView):
         # return a collection.
         if not single:
             try:
-                paginated = self._paginated(search_items, filters=filters,
-                                            sort=sort, group_by=group_by)
+                paginated = self._paginated(search_items, model=resource, filters=filters, sort=sort, group_by=group_by)
             except MultipleExceptions as e:
                 return errors_from_serialization_exceptions(e.exceptions)
             except PaginationError as exception:
