@@ -100,7 +100,7 @@ setup(
     name='Flask-Restless-NG',
     platforms='any',
     python_requires='>=3.6',
-    packages=['flask_restless'],
+    packages=['flask_restless', 'flask_restless.views'],
     test_suite='tests',
     tests_require=[],
     url='https://github.com/mrevutskyi/flask-restless-ng',
