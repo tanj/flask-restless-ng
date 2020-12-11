@@ -24,6 +24,7 @@ from flask import Blueprint
 from .helpers import collection_name
 from .helpers import model_for
 from .helpers import primary_key_for
+from .helpers import primary_key_names
 from .helpers import serializer_for
 from .helpers import url_for
 from .serialization import DefaultDeserializer
@@ -604,8 +605,8 @@ class APIManager(object):
         if only is not None and exclude is not None:
             msg = 'Cannot simultaneously specify both `only` and `exclude`'
             raise IllegalArgumentError(msg)
-        if not hasattr(model, 'id'):
-            msg = 'Provided model must have an `id` attribute'
+        if not hasattr(model, 'id') and len(primary_key_names(model)) == 0:
+            msg = 'Provided model must have an `id` attribute or primary key'
             raise IllegalArgumentError(msg)
         if collection_name == '':
             msg = 'Collection name must be nonempty'
