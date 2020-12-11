@@ -413,11 +413,18 @@ class TestAPIManager(ManagerTestBase):
 
     def test_missing_id(self):
         """Tests that calling :meth:`APIManager.create_api` on a model without
-        an ``id`` column raises an exception.
+        an ``id`` column doesn't raise an exception but creates an ``id``
+        attribute using the ``primary_key``
 
         """
-        with self.assertRaises(IllegalArgumentError):
-            self.manager.create_api(self.Tag)
+        self.manager.create_api(self.Tag)
+        tag1 = self.Tag(name='smart')
+        self.session.add(tag1)
+        self.session.commit()
+        response = self.app.get(f'/api/tag/{tag1.name}')
+        document = loads(response.data)
+        assert 'id' in document['data'].keys()
+        assert document['data']['id'] == tag1.name
 
     def test_empty_collection_name(self):
         """Tests that calling :meth:`APIManager.create_api` with an empty
