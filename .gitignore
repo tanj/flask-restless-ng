@@ -16,6 +16,7 @@ cover
 
 # virtualenv environments
 env*/
+/venv/
 
 # build artifacts from python setup.py build or python setup.py install
 build/

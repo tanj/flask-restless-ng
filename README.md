@@ -10,7 +10,7 @@ This is a fork of [Flask-Restless](https://github.com/jfinkels/flask-restless) m
 Flask-Restless is a great tool to build [JSON API][2] for SQLAlchemy models, but unfortunately is
 no longer maintained and does not support the most recent versions of Flask and SQLAlchemy 
 
-Version `1.0.0` of `Flask-Restless-NG` is fully API compatible with `Flask-Restless` version `1.0.0b1`
+Version `1.0.*` of `Flask-Restless-NG` is fully API compatible with `Flask-Restless` version `1.0.0b1`
 with the following improvements:
 
   * Supports Flask 1.0+ and SQLAlchemy 1.3+

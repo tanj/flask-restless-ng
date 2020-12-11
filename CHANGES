@@ -4,6 +4,11 @@ Changelog
 Changes in Flask-Restless-NG
 ============================
 
+Version 1.0.1
+-------------
+- #4: `id` is an optional attribute as long as Model has a primary key
+- #6: Fix for `flask_restless.views` not being included in the installed package.
+
 Version 1.0.0
 -------------
 - Performance improvement: url_for() changed to build url locally instead of delegating it to Flask
