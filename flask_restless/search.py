@@ -21,6 +21,7 @@ import inspect
 
 from sqlalchemy import and_
 from sqlalchemy import or_
+from sqlalchemy import func
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql import false as FALSE
@@ -137,6 +138,8 @@ OPERATORS = {
     'not_like': lambda f, a: ~f.like(a),
     'in': lambda f, a: f.in_(a),
     'not_in': lambda f, a: ~f.in_(a),
+    'to_tsquery': lambda f, a: f.match(a),
+    'plainto_tsquery': lambda f, a: f.op('@@')(func.plainto_tsquery(a)),
     # Operators which accept three arguments.
     'has': lambda f, a, fn: f.has(_sub_operator(f, a, fn)),
     'any': lambda f, a, fn: f.any(_sub_operator(f, a, fn)),

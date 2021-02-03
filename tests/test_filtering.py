@@ -20,10 +20,12 @@ from sqlalchemy import Column
 from sqlalchemy import Date
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import Time
 from sqlalchemy import Unicode
-from sqlalchemy.dialects.postgresql import INET
+from sqlalchemy.dialects.postgresql import INET, TSVECTOR
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
@@ -1164,3 +1166,81 @@ class TestAssociationProxy(SearchTestBase):
         document = loads(response.data)
         articles = document['data']
         assert ['1', '2'] == sorted(article['id'] for article in articles)
+
+class TestTSVectorOperators(SearchTestBase):
+    """Unit tests for the TSQuery operators in PostgreSQL.
+    For more information, see `Text Search Types`_
+    in the PostgreSQL documentation.
+    .. _Text Search Types:
+       https://www.postgresql.org/docs/current/datatype-textsearch.html
+    """
+
+    def setUp(self):
+        super(TestTSVectorOperators, self).setUp()
+
+        class Product(self.Base):
+            __tablename__ = 'product'
+            id = Column(Integer, primary_key=True)
+            name = Column(String)
+            document = Column(TSVECTOR)
+
+        self.Product = Product
+        # This try/except skips the tests if we are unable to create the
+        # tables in the PostgreSQL database.
+        self.Base.metadata.create_all()
+        self.manager.create_api(Product)
+
+        # Create common records
+        self.product1 = self.Product(
+            id=1, name='Porsche 911', document=func.to_tsvector('Porsche 911'))
+        self.product2 = self.Product(
+            id=2, name='Porsche 918', document=func.to_tsvector('Porsche 918'))
+        self.session.add_all([self.product1, self.product2])
+        self.session.commit()
+
+    # We know this method will be called by `setUp()` in the superclass,
+    # so we can set up the temporary database here.
+    def database_uri(self):
+        """Creates a PostgreSQL database and returns its connection URI."""
+        #: The PostgreSQL database used by the test methods in this class.
+        #:
+        #: This attribute stores a
+        #: :class:`~testing.postgresql.Postgresql` object, which must be
+        #: stopped in the :meth:`.tearDown` method.
+        self.database = PostgreSQL()
+
+        return self.database.url()
+
+    def test_to_tsquery(self):
+        """Test for the ``to_tsquery`` operator.
+        ..warning::
+            This operation is only available on TSVECTOR fields.
+        For example:
+        .. sourcecode:: postgresql
+            document @@ to_tsquery('Hello !world')
+        """
+        # Search with the &.
+        filters = [
+            dict(name='document', op='to_tsquery', val='911 & Porsche')]
+        response = self.search('/api/product', filters)
+        document = loads(response.data)
+        products = document['data']
+        assert [self.product1.id] == sorted(
+            int(product['id']) for product in products)
+
+    def test_plainto_tsquery(self):
+        """Test for the ``plainto_tsquery`` operator.
+        ..warning::
+            This operation is only available on TSVECTOR fields.
+        For example:
+        .. sourcecode:: postgresql
+            document @@ plainto_tsquery('Hello !world')
+        """
+        # Search without the &.
+        filters = [
+            dict(name='document', op='plainto_tsquery', val='911 Porsche')]
+        response = self.search('/api/product', filters)
+        document = loads(response.data)
+        products = document['data']
+        assert [self.product1.id] == sorted(
+            int(product['id']) for product in products)
