@@ -4,6 +4,12 @@ Changelog
 Changes in Flask-Restless-NG
 ============================
 
+Version 1.0.2
+-------------
+- #1, #13: Fix for relationship updates not being committed (by @sharky98)
+- #12: Fix for 500 when trying to include Null/None relationship
+- Added TSQuery operator (by @augustin)
+
 Version 1.0.1
 -------------
 - #4: `id` is an optional attribute as long as Model has a primary key
