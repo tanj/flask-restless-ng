@@ -131,6 +131,10 @@ To run the tests:
     python -m unittest
 
 
+## Building distribution package
+
+    python3 setup.py sdist bdist_wheel
+
 ## Building documentation ##
 
 Flask-Restless requires the following program and supporting library to build
