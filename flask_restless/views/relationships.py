@@ -177,7 +177,7 @@ class RelationshipAPI(APIBase):
                     return self._handle_validation_exception(exception)
 
         self.session.commit()
-        
+
         # Perform any necessary postprocessing.
         for postprocessor in self.postprocessors['POST_RELATIONSHIP']:
             postprocessor()

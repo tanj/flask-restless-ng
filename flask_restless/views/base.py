@@ -1234,6 +1234,8 @@ class APIBase(ModelView):
         result = []
         failed = []
         for instance in instances:
+            if instance is None:
+                continue
             model = get_model(instance)
             if relationship:
                 serialize = self.serialize_relationship

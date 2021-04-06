@@ -556,6 +556,16 @@ class TestInclusion(ManagerTestBase):
                    if resource['type'] == 'person']
         assert ['1', '2'] == sorted(author['id'] for author in authors)
 
+    def test_include_does_not_try_to_serialize_none(self):
+        article = self.Article(id=1)
+        comment = self.Comment(id=1)
+        comment.article = article
+        self.session.add_all([article, comment])
+        self.session.commit()
+        response = self.app.get('/api/article/1', query_string=dict(include='comments.author'))
+        document = response.json
+        assert len(document['included']) == 1
+
     def test_include_intermediate_resources(self):
         """Tests that intermediate resources from a multi-part
         relationship path are included in a compound document.
