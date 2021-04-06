@@ -90,7 +90,7 @@ setup(
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
-    description='A fork of Flask-Restless with updated dependencpython setup.py develop --uninstallies and bug fixes',
+    description='A fork of Flask-Restless with updated dependencies and bug fixes',
     download_url='https://pypi.python.org/pypi/Flask-Restless-NG',
     install_requires=REQUIREMENTS,
     include_package_data=True,
