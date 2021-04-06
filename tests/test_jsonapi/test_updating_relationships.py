@@ -192,9 +192,9 @@ class TestUpdatingRelationships(ManagerTestBase):
         self.session.commit()
         data = {'data': [{'type': 'article', 'id': '1'},
                          {'type': 'article', 'id': '2'}]}
-        response = self.app.post('/api/person/1/relationships/articles',
-                                 data=dumps(data))
+        response = self.app.post('/api/person/1/relationships/articles', json=data)
         assert response.status_code == 204
+        self.session.refresh(person)
         articles = sorted(person.articles, key=attrgetter('id'))
         assert [article1, article2] == articles
 
