@@ -13,6 +13,9 @@
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.inspection import inspect as sqlalchemy_inspect
 from sqlalchemy.sql import func
+from sqlalchemy import __version__ as SQLALCHEMY_VERSION
+
+SQLALCHEMY_14 = SQLALCHEMY_VERSION.startswith('1.4.')
 
 
 def upper_keys(dictionary):
@@ -20,11 +23,7 @@ def upper_keys(dictionary):
     converted to upper case and the values left unchanged.
 
     """
-    # In Python 3, this should be
-    #
-    #     return {k.upper(): v for k, v in dictionary.items()}
-    #
-    return dict((k.upper(), v) for k, v in dictionary.items())
+    return {k.upper(): v for k, v in dictionary.items()}
 
 
 def evaluate_functions(session, model, functions):
@@ -111,9 +110,15 @@ def count(session, query):
     for large queries.
 
     """
-    counts = query.selectable.with_only_columns([func.count()])
+    # There is no straightforward way to find if SQLAlchemy Statement class has limit set
+    if ' LIMIT ' in str(query.statement):
+        return query.order_by(None).count()
+    if SQLALCHEMY_14:
+        counts = query.selectable.with_only_columns(func.count(query.selectable.selected_columns[0]))
+    else:
+        counts = query.selectable.with_only_columns([func.count()])
     num_results = session.execute(counts.order_by(None)).scalar()
-    if num_results is None or query._limit is not None:
+    if num_results is None:
         return query.order_by(None).count()
     return num_results
 

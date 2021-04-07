@@ -4,6 +4,10 @@ Changelog
 Changes in Flask-Restless-NG
 ============================
 
+Version 1.0.4
+-------------
+- #15: Support SQLAlchemy 1.4.x
+
 Version 1.0.2
 -------------
 - #1, #13: Fix for relationship updates not being committed (by @sharky98)
