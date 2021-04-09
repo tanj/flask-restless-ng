@@ -4,6 +4,10 @@ Changelog
 Changes in Flask-Restless-NG
 ============================
 
+Version 1.0.5
+-------------
+- #16 - Fix: including child of empty relationship (by @sharky98)
+
 Version 1.0.4
 -------------
 - #15: Support SQLAlchemy 1.4.x
