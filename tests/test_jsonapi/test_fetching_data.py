@@ -566,6 +566,13 @@ class TestInclusion(ManagerTestBase):
         document = response.json
         assert len(document['included']) == 1
 
+    def test_include_relationship_of_none(self):
+        """If in a chain of relationships A -> B -> C,  B is Null/None, include=b.c should not cause an error"""
+        self.session.add(self.Article(id=1))
+        self.session.commit()
+        response = self.app.get('/api/article/1', query_string=dict(include='author.comments'))
+        assert response.status_code == 200
+
     def test_include_intermediate_resources(self):
         """Tests that intermediate resources from a multi-part
         relationship path are included in a compound document.
@@ -957,12 +964,7 @@ class TestSorting(ManagerTestBase):
 
         """
         person = self.Person(id=1)
-        # In Python 3, the `unicode` class doesn't exist.
-        try:
-            to_string = unicode
-        except NameError:
-            to_string = str
-        articles = [self.Article(id=i, title=to_string(i), author=person) for i in range(5)]
+        articles = [self.Article(id=i, title=str(i), author=person) for i in range(5)]
         self.session.add(person)
         self.session.add_all(articles)
         self.session.commit()

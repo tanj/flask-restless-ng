@@ -704,34 +704,6 @@ class TestServerSparseFieldsets(ManagerTestBase):
         assert ['id', 'relationships', 'type'] == sorted(person)
         assert ['articles'] == sorted(person['relationships'])
 
-    # # TODO This doesn't exactly make sense anymore; each type of included
-    # # resource should really determine its own sparse fieldsets.
-    # def test_only_on_included(self):
-    #     """Tests for specifying that response should only include certain
-    #     attributes of related models.
-
-    #     """
-    #     person = self.Person(id=1)
-    #     article = self.Article(title='foo')
-    #     article.author = person
-    #     self.session.add_all([person, article])
-    #     self.session.commit()
-    #     only = ['articles', 'articles.title']
-    #     self.manager.create_api(self.Person, only=only)
-    #     response = self.app.get('/api/person/1?include=articles')
-    #     document = loads(response.data)
-    #     person = document['data']
-    #     assert person['id'] == '1'
-    #     assert person['type'] == 'person'
-    #     assert 'name' not in person
-    #     articles = person['relationships']['articles']['data']
-    #     included = document['included']
-    #     expected_ids = sorted(article['id'] for article in articles)
-    #     actual_ids = sorted(article['id'] for article in included)
-    #     assert expected_ids == actual_ids
-    #     assert all('title' not in article for article in included)
-    #     assert all('comments' in article['relationships'] for article in included)
-
     def test_only_as_objects(self):
         """Test for specifying included columns as SQLAlchemy column objects
         instead of strings.
@@ -877,29 +849,6 @@ class TestServerSparseFieldsets(ManagerTestBase):
         document = loads(response.data)
         person = document['data']
         assert 'name' not in person['attributes']
-
-    # # TODO This doesn't exactly make sense anymore; each type of included
-    # # resource should really determine its own sparse fieldsets.
-    # def test_exclude_on_included(self):
-    #     """Tests for specifying that response should exclude certain
-    #     attributes of related models.
-    #
-    #     """
-    #     person = self.Person(id=1)
-    #     article = self.Article(title='foo')
-    #     article.author = person
-    #     self.session.add_all([person, article])
-    #     self.session.commit()
-    #     self.manager.create_api(self.Person, exclude=['articles.title'])
-    #     response = self.app.get('/api/person/1?include=articles')
-    #     document = loads(response.data)
-    #     person = document['data']
-    #     articles = person['relationships']['articles']['data']
-    #     included = document['included']
-    #     expected_ids = sorted(article['id'] for article in articles)
-    #     actual_ids = sorted(article['id'] for article in included)
-    #     assert expected_ids == actual_ids
-    #     assert all('title' not in article for article in included)
 
     def test_exclude_as_objects(self):
         """Test for specifying excluded columns as SQLAlchemy column
