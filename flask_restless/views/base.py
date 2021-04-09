@@ -598,6 +598,8 @@ def resources_from_path(instance, path):
         else:
             relation = None
         for resource in thislevel:
+            if resource is None:
+                continue
             if resource in seen:
                 continue
             # Since this method is going to be used to populate the
