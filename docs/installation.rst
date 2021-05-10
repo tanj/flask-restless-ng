@@ -1,14 +1,13 @@
-Downloading and installing Flask-Restless
-=========================================
+Downloading and installing Flask-Restless-NG
+============================================
 
 Flask-Restless can be downloaded from the `Python Package Index`_. The
 development version can be downloaded from `GitHub`_. However, it is better to
 install with ``pip`` (in a virtual environment provided by ``virtualenv``)::
 
-    pip install Flask-Restless
+    pip install Flask-Restless-NG
 
-Flask-Restless supports all Python versions that Flask supports, which
-currently include versions 2.6, 2.7, 3.3, and 3.4.
+Flask-Restless supports Python 3.6+
 
 Flask-Restless has the following dependencies (which will be automatically
 installed if you use ``pip``):
