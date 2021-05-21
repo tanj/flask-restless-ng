@@ -924,8 +924,9 @@ class Paginated(object):
 
     def __init__(self, items, first=None, last=None, prev=None, next_=None,
                  page_size=None, num_results=None, filters=None, sort=None,
-                 group_by=None):
+                 group_by=None, raw_items=None):
         self._items = items
+        self._raw_items = raw_items
         self._num_results = num_results
         # Pagination links and the link header are computed by the code below.
         self._pagination_links = {}
@@ -1016,6 +1017,10 @@ class Paginated(object):
     def items(self):
         """The items in the current page that this object represents."""
         return self._items
+
+    @property
+    def raw_items(self):
+        return self._raw_items
 
     @property
     def num_results(self):
@@ -1293,7 +1298,7 @@ class APIBase(ModelView):
         # of a SQLAlchemy model, get the resources to include for that
         # one instance. Otherwise, collect the resources to include for
         # each instance in `instances`.
-        if isinstance(instance_or_instances, Query):
+        if isinstance(instance_or_instances, (Query, list)):
             to_include = set(chain(self.resources_to_include(resource)
                                    for resource in instance_or_instances))
         else:
@@ -1399,12 +1404,12 @@ class APIBase(ModelView):
         is_relationship = self.use_resource_identifiers()
         # If the page size is 0, just return everything.
         if page_size == 0:
-            result = self._serialize_many(items, relationship=is_relationship)
+            raw_items = items.all()
+            result = self._serialize_many(raw_items, relationship=is_relationship)
             # Use `len()` here instead of doing `count(self.session,
             # items)` because the former should be faster.
             num_results = len(result)
-            return Paginated(result, page_size=page_size,
-                             num_results=num_results)
+            return Paginated(result, page_size=page_size, num_results=num_results, raw_items=raw_items)
         # Determine the client's page number request. Raise an exception
         # if the page number is out of bounds.
         page_number = int(request.args.get(PAGE_NUMBER_PARAM, 1))
@@ -1444,6 +1449,7 @@ class APIBase(ModelView):
             items = items.limit(page_size).offset(offset)
         # Serialize the found items. This may raise an exception if
         # there is a problem serializing any of the objects.
+        raw_items = items
         result = self._serialize_many(items, relationship=is_relationship)
         # Wrap the list of results in a Paginated object, which
         # represents the result set and stores some extra information
@@ -1451,7 +1457,7 @@ class APIBase(ModelView):
         return Paginated(result, num_results=num_results, first=first,
                          last=last, next_=next_, prev=prev,
                          page_size=page_size, filters=filters, sort=sort,
-                         group_by=group_by)
+                         group_by=group_by, raw_items=raw_items)
 
     def _get_resource_helper(self, resource, primary_resource=None,
                              relation_name=None, related_resource=False):
@@ -1600,7 +1606,7 @@ class APIBase(ModelView):
             pk_value = result['data'][primary_key]
             # The URL at which a client can access the instance matching this
             # search query.
-            url = '{0}/{1}'.format(request.base_url, pk_value)
+            url = f'{request.base_url}/{pk_value}'
             headers = dict(Location=url)
             num_results = 1
 
@@ -1608,7 +1614,10 @@ class APIBase(ModelView):
         if self.use_resource_identifiers():
             instances = resource
         else:
-            instances = search_items
+            if not single:
+                instances = paginated.raw_items
+            else:
+                instances = search_items
         # Include any requested resources in a compound document.
         try:
             included = self.get_all_inclusions(instances)
