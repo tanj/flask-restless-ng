@@ -94,7 +94,7 @@ class RelationshipAPI(APIBase):
             return error_response(404, detail=detail)
         if is_like_list(primary_resource, relation_name):
             try:
-                filters, sort, group_by = self._collection_parameters()
+                filters, sort = self._collection_parameters()
             except (TypeError, ValueError, OverflowError) as exception:
                 detail = 'Unable to decode filter objects as JSON list'
                 return error_response(400, cause=exception, detail=detail)
@@ -103,8 +103,7 @@ class RelationshipAPI(APIBase):
                 return error_response(400, cause=exception, detail=detail)
             return self._get_collection_helper(resource=primary_resource,
                                                relation_name=relation_name,
-                                               filters=filters, sort=sort,
-                                               group_by=group_by)
+                                               filters=filters, sort=sort)
         resource = getattr(primary_resource, relation_name)
         return self._get_resource_helper(resource,
                                          primary_resource=primary_resource,

@@ -356,8 +356,7 @@ def create_filter(model, filt):
     return or_(create_filter(model, f) for f in filt)
 
 
-def search_relationship(session, instance, relation, filters=None, sort=None,
-                        group_by=None):
+def search_relationship(session, instance, relation, filters=None, sort=None):
     model = get_model(instance)
     related_model = get_related_model(model, relation)
     query = session_query(session, related_model)
@@ -372,16 +371,14 @@ def search_relationship(session, instance, relation, filters=None, sort=None,
         return query.filter(FALSE())
     query = query.filter(primary_key_value(related_model).in_(primary_keys))
 
-    return search(session, related_model, filters=filters, sort=sort,
-                  group_by=group_by, _initial_query=query)
+    return search(session, related_model, filters=filters, sort=sort, _initial_query=query)
 
 
-def search(session, model, filters=None, sort=None, group_by=None,
-           _initial_query=None):
+def search(session, model, filters=None, sort=None, _initial_query=None):
     """Returns a SQLAlchemy query instance with the specified parameters.
 
     Each instance in the returned query meet the requirements specified by
-    ``filters``, ``sort``, and ``group_by``.
+    ``filters`` and ``sort``.
 
     This function returns a single instance of the model matching the search
     parameters if ``search_params['single']`` is ``True``, or a list of all
@@ -401,8 +398,7 @@ def search(session, model, filters=None, sort=None, group_by=None,
     will be appended to this query. Otherwise, an empty query will be
     created for the specified model.
 
-    When building the query, filters are applied first, then sorting, then
-    grouping.
+    When building the query, filters are applied first, then sorting.
 
     Raises :exc:`UnknownField` if one of the named fields given in one
     of the `filters` does not exist on the `model`.
@@ -444,18 +440,5 @@ def search(session, model, filters=None, sort=None, group_by=None,
         pks = primary_key_names(model)
         pk_order = (getattr(model, field).asc() for field in pks)
         query = query.order_by(*pk_order)
-
-    # Group the query.
-    if group_by:
-        for field_name in group_by:
-            if '.' in field_name:
-                field_name, field_name_in_relation = field_name.split('.')
-                relation_model = get_related_model(model, field_name)
-                field = getattr(relation_model, field_name_in_relation)
-                query = query.join(relation_model)
-                query = query.group_by(field)
-            else:
-                field = getattr(model, field_name)
-                query = query.group_by(field)
 
     return query

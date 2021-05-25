@@ -784,9 +784,8 @@ class Paginated(object):
     respectively. These can also be ``None``, in the case that there is
     no such page.
 
-    `filters`, `sort`, and `group_by` are the filtering, sorting, and
-    grouping query parameters from the request that yielded the given
-    items.
+    `filters`, and `sort` are the filtering and sorting query parameters
+    from the request that yielded the given items.
 
     After instantiating this object, one can access a list of link
     header strings and a dictionary of pagination link strings as
@@ -841,18 +840,6 @@ class Paginated(object):
         return ','.join(''.join((dir_, field)) for dir_, field in sort)
 
     @staticmethod
-    def _group_to_string(group_by):
-        """Returns a string representation of the specified grouping
-        fields.
-
-        This is essentially the inverse operation of the parsing that is
-        done when reading the grouping fields from the query parameters
-        of the request string in a :http:method:`get` request.
-
-        """
-        return ','.join(group_by)
-
-    @staticmethod
     def _url_without_pagination_params():
         """Returns the request URL including all query parameters except
         the page size and page number query parameters.
@@ -893,7 +880,7 @@ class Paginated(object):
 
     def __init__(self, items, first=None, last=None, prev=None, next_=None,
                  page_size=None, num_results=None, filters=None, sort=None,
-                 group_by=None, raw_items=None):
+                 raw_items=None):
         self._items = items
         self._raw_items = raw_items
         self._num_results = num_results
@@ -906,7 +893,7 @@ class Paginated(object):
             return
         # Create the pagination link URLs.
         #
-        # Need to account for filters, sort, and group_by, in addition
+        # Need to account for filters, and sort in addition
         # to pagination links, so we collect those query parameters
         # here, if they exist.
         query_params = {}
@@ -914,8 +901,6 @@ class Paginated(object):
             query_params[FILTER_PARAM] = Paginated._filters_to_string(filters)
         if sort:
             query_params[SORT_PARAM] = Paginated._sort_to_string(sort)
-        if group_by:
-            query_params[GROUP_PARAM] = Paginated._group_to_string(group_by)
         # The page size is independent of the link type (first, last,
         # next, or prev).
         query_params[PAGE_SIZE_PARAM] = str(page_size)
@@ -1277,10 +1262,10 @@ class APIBase(ModelView):
         return self._serialize_many(to_include)
 
     def _collection_parameters(self):
-        """Gets filtering, sorting, grouping, and other settings from the
+        """Gets filtering, sorting and other settings from the
         request that affect the collection of resources in a response.
 
-        Returns a four-tuple of the form ``(filters, sort, group_by)``.
+        Returns a tuple of the form ``(filters, sort)``.
         These can be provided to the
         :func:`~flask_restless.search.search` function; for more
         information, see the documentation for that function.
@@ -1323,16 +1308,9 @@ class APIBase(ModelView):
         else:
             sort = []
 
-        # Determine grouping options.
-        group_by = request.args.get(GROUP_PARAM)
-        if group_by:
-            group_by = group_by.split(',')
-        else:
-            group_by = []
+        return filters, sort
 
-        return filters, sort, group_by
-
-    def _paginated(self, items, filters=None, sort=None, group_by=None):
+    def _paginated(self, items, filters=None, sort=None):
         """Returns a :class:`Paginated` object representing the
         correctly paginated list of resources to return to the client,
         based on the current request.
@@ -1341,7 +1319,7 @@ class APIBase(ModelView):
         containing all requested elements of a collection regardless of
         the page number or size in the client's request.
 
-        `filters`, `sort`, and `group_by` must have already been
+        `filters`, and `sort` must have already been
         extracted from the client's request (as by
         :meth:`_collection_parameters`) and applied to the query.
 
@@ -1420,7 +1398,7 @@ class APIBase(ModelView):
         return Paginated(result, num_results=num_results, first=first,
                          last=last, next_=next_, prev=prev,
                          page_size=page_size, filters=filters, sort=sort,
-                         group_by=group_by, raw_items=raw_items)
+                         raw_items=raw_items)
 
     def _get_resource_helper(self, resource, primary_resource=None,
                              relation_name=None, related_resource=False):
@@ -1492,8 +1470,7 @@ class APIBase(ModelView):
             postprocessor(result=result)
         return result, 200
 
-    def _get_collection_helper(self, resource=None, relation_name=None,
-                               filters=None, sort=None, group_by=None):
+    def _get_collection_helper(self, resource=None, relation_name=None, filters=None, sort=None):
         if (resource is None) ^ (relation_name is None):
             raise ValueError('resource and relation must be both None or both'
                              ' not None')
@@ -1505,8 +1482,7 @@ class APIBase(ModelView):
         else:
             search_ = partial(search, self.session, self.model)
         try:
-            search_items = search_(filters=filters, sort=sort,
-                                   group_by=group_by)
+            search_items = search_(filters=filters, sort=sort)
         except ComparisonToNull as exception:
             detail = str(exception)
             return error_response(400, cause=exception, detail=detail)
@@ -1529,8 +1505,7 @@ class APIBase(ModelView):
         # If the result of the search is a SQLAlchemy query object, we need to
         # return a collection.
         try:
-            paginated = self._paginated(search_items, filters=filters,
-                                        sort=sort, group_by=group_by)
+            paginated = self._paginated(search_items, filters=filters, sort=sort)
         except MultipleExceptions as e:
             return errors_from_serialization_exceptions(e.exceptions)
         except PaginationError as exception:
@@ -1564,12 +1539,9 @@ class APIBase(ModelView):
 
         # This method could have been called on either a request to
         # fetch a collection of resources or a to-many relation.
-        processor_type = \
-            self.collection_processor_type(is_relation=is_relation)
-        processor_type = 'GET_{0}'.format(processor_type)
-        for postprocessor in self.postprocessors[processor_type]:
-            postprocessor(result=result, filters=filters, sort=sort,
-                          group_by=group_by)
+        processor_type = self.collection_processor_type(is_relation=is_relation)
+        for postprocessor in self.postprocessors[f'GET_{processor_type}']:
+            postprocessor(result=result, filters=filters, sort=sort)
         # Add the metadata to the JSON API response object.
         #
         # HACK Provide the headers directly in the result dictionary, so that

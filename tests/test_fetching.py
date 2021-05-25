@@ -116,39 +116,6 @@ class TestFetchCollection(ManagerTestBase):
         assert person['id'] == '1'
         assert person['type'] == 'people'
 
-    def test_group_by(self):
-        """Tests for grouping results."""
-        person1 = self.Person(id=1, name=u'foo')
-        person2 = self.Person(id=2, name=u'foo')
-        person3 = self.Person(id=3, name=u'bar')
-        self.session.add_all([person1, person2, person3])
-        self.session.commit()
-        query_string = {'group': 'name'}
-        response = self.app.get('/api/person', query_string=query_string)
-        document = loads(response.data)
-        people = document['data']
-        assert ['bar', 'foo'] == sorted(person['attributes']['name']
-                                        for person in people)
-
-    def test_group_by_related(self):
-        """Tests for grouping results by a field on a related model."""
-        person1 = self.Person(id=1, name=u'foo')
-        person2 = self.Person(id=2, name=u'bar')
-        article1 = self.Article(id=1)
-        article2 = self.Article(id=2)
-        article3 = self.Article(id=3)
-        article1.author = person1
-        article2.author = person1
-        article3.author = person2
-        self.session.add_all([person1, person2, article1, article2, article3])
-        self.session.commit()
-        response = self.app.get('/api/article?group=author.name')
-        document = loads(response.data)
-        articles = document['data']
-        author_ids = sorted(article['relationships']['author']['data']['id']
-                            for article in articles)
-        assert ['1', '2'] == author_ids
-
     def test_pagination_links_empty_collection(self):
         """Tests that pagination links work correctly for an empty
         collection.
@@ -159,7 +126,7 @@ class TestFetchCollection(ManagerTestBase):
         assert response.status_code == 200
         document = loads(response.data)
         pagination = document['links']
-        base_url = '{0}?'.format(base_url)
+        base_url = f'{base_url}?'
         assert base_url in pagination['first']
         assert 'page[number]=1' in pagination['first']
         assert base_url in pagination['last']
@@ -434,24 +401,6 @@ class TestFetchRelation(ManagerTestBase):
         assert ['c', 'b', 'a'] == [article['attributes']['title']
                                    for article in articles]
         assert ['2', '1', '3'] == [article['id'] for article in articles]
-
-    def test_to_many_grouping(self):
-        """Tests for grouping a to-many relation."""
-        person = self.Person(id=1)
-        article1 = self.Article(id=1, title=u'b')
-        article2 = self.Article(id=2, title=u'a')
-        article3 = self.Article(id=3, title=u'b')
-        articles = [article1, article2, article3]
-        person.articles = articles
-        self.session.add(person)
-        self.session.add_all(articles)
-        self.session.commit()
-        params = {'group': 'title'}
-        response = self.app.get('/api/person/1/articles', query_string=params)
-        document = loads(response.data)
-        articles = document['data']
-        assert ['a', 'b'] == sorted(article['attributes']['title']
-                                    for article in articles)
 
 
 class TestFetchRelatedResource(ManagerTestBase):
