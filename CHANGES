@@ -4,6 +4,10 @@ Changelog
 Changes in Flask-Restless-NG
 ============================
 
+Version 1.0.6
+-------------
+- Prevent redundant SQL queries during pagination and resource inclusion
+
 Version 1.0.5
 -------------
 - #16 - Fix: including child of empty relationship (by @sharky98)
