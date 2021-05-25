@@ -525,16 +525,6 @@ class TestFiltering(SearchTestBase):
         assert len(people) == 2
         assert ['2', '3'] == sorted(person['id'] for person in people)
 
-    @unittest.skip("I'm not certain in what situations an invalid value should cause a SQLAlchemy error")
-    def test_invalid_value(self):
-        """Tests for an error response on an invalid value in a filter object.
-
-        """
-        filters = [dict(name='age', op='>', val='should not be a string')]
-        response = self.search('/api/person', filters)
-        assert response.status_code == 400
-        # TODO check the error message here
-
     def test_invalid_field(self):
         """Tests for an error response on an invalid field name in a filter
         object.

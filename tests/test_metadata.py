@@ -52,10 +52,3 @@ class TestMetadata(ManagerTestBase):
         document = loads(response.data)
         assert document['meta']['total'] == 15
 
-    @unittest.skip('Not sure whether this should be implemented')
-    def test_http_headers(self):
-        """Tests that HTTP headers appear as elements in the JSON metadata."""
-        response = self.app.get('/api/person')
-        document = loads(response.data)
-        meta = document['meta']
-        assert meta['Content-Type'] == CONTENT_TYPE

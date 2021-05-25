@@ -103,15 +103,6 @@ class TestDeleting(ManagerTestBase):
         response = self.app.delete('/api/person')
         assert response.status_code == 405
 
-    @unittest.skip('Not sure how to implement this.')
-    def test_integrity_error(self):
-        """Tests that an :exc:`IntegrityError` raised in a
-        :http:method:`delete` request is caught and returned to the client
-        safely.
-
-        """
-        assert False, 'Not implemented'
-
     def test_nonexistent_instance(self):
         """Tests that a request to delete a nonexistent resource yields a
         :http:status:`404 response.

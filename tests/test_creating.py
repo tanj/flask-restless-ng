@@ -928,33 +928,6 @@ class TestAssociationProxy(ManagerTestBase):
         tags = article['relationships']['tags']['data']
         assert ['1', '2'] == sorted(tag['id'] for tag in tags)
 
-    @unittest.skip('Not sure how to implement this.')
-    def test_scalar(self):
-        """Tests for creating a resource with an association proxy to scalars
-        as a list attribute instead of a link object.
-
-        """
-        # tag1 = self.Tag(name='foo')
-        # tag2 = self.Tag(name='bar')
-        # self.session.add_all([tag1, tag2])
-        # self.session.commit()
-        # data = dict(data=dict(type='article', tag_names=['foo', 'bar']))
-        # response = self.app.post('/api/article', data=dumps(data))
-        # print(loads(response.data))
-        # assert response.status_code == 201
-        # document = loads(response.data)
-        # article = document['data']
-        # assert ['foo', 'bar'] == article['tag_names']
-        assert False, 'Not implemented'
-
-    @unittest.skip('Not sure how to implement this.')
-    def test_dictionary_collection(self):
-        """Tests for creating a resource with a dictionary based collection via
-        an association proxy.
-
-        """
-        assert False, 'Not implemented'
-
 
 class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
     """Tests for creating resources defined as Flask-SQLAlchemy models instead

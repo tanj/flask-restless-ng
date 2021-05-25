@@ -82,33 +82,6 @@ class TestServerResponsibilities(ManagerTestBase):
         response = self.app.post('/api/person', data=dumps(data))
         assert response.mimetype == CONTENT_TYPE
 
-    @unittest.skip('we currently do not support updates that have side-effects')
-    def test_patch_content_type(self):
-        """"Tests that the response for a :http:method:`patch` request
-        that has side-effects has the correct content type.
-
-        For more information, see the `Server Responsibilities`_ section
-        of the JSON API specification.
-
-        .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-        data = {
-            'data': {
-                'type': 'person',
-                'id': 1,
-                'attributes': {
-                    'name': 'bar'
-                }
-            }
-        }
-        # TODO Need to make a request that has side-effects.
-        response = self.app.patch('/api/person/1', data=dumps(data))
-        assert response.mimetype == CONTENT_TYPE
-
     def test_no_response_media_type_params(self):
         """"Tests that a server responds with :http:status:`415` if any
         media type parameters appear in the request content type header.

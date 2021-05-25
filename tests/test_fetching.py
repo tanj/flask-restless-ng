@@ -228,56 +228,6 @@ class TestFetchResource(ManagerTestBase):
         self.manager.create_api(Person)
         # self.manager.create_api(Tag)
 
-    @unittest.skip('Currently not supported')
-    def test_alternate_primary_key(self):
-        """Tests that models with primary keys that are not named ``id`` are
-        are still accessible via their primary keys.
-
-        """
-        tag = self.Tag(name=u'foo')
-        self.session.add(tag)
-        self.session.commit()
-        response = self.app.get('/api/tag/foo')
-        document = loads(response.data)
-        tag = document['data']
-        assert tag['id'] == 'foo'
-
-    @unittest.skip('Currently not supported')
-    def test_primary_key_int_string(self):
-        """Tests for getting a resource that has a string primary key,
-        including the possibility of a string representation of a number.
-
-        """
-        tag = self.Tag(name=u'1')
-        self.session.add(tag)
-        self.session.commit()
-        response = self.app.get('/api/tag/1')
-        document = loads(response.data)
-        tag = document['data']
-        assert tag['attributes']['name'] == '1'
-        assert tag['id'] == '1'
-
-    @unittest.skip('Currently not supported')
-    def test_specified_primary_key(self):
-        """Tests that models with more than one primary key are accessible via
-        a primary key specified by the server.
-
-        """
-        article = self.Article(id=1, title=u'foo')
-        self.session.add(article)
-        self.session.commit()
-        self.manager.create_api(self.Article, url_prefix='/api2',
-                                primary_key='title')
-        response = self.app.get('/api2/article/1')
-        assert response.status_code == 404
-        response = self.app.get('/api2/article/foo')
-        assert response.status_code == 200
-        document = loads(response.data)
-        resource = document['data']
-        # Resource objects must have string IDs.
-        assert resource['id'] == str(article.id)
-        assert resource['title'] == article.title
-
     def test_collection_name(self):
         """Tests for fetching a single resource with an alternate collection
         name.
@@ -1426,23 +1376,6 @@ class TestAssociationProxy(ManagerTestBase):
         article = document['data']
         tags = article['relationships']['tags']['data']
         assert ['1'] == sorted(tag['id'] for tag in tags)
-
-    @unittest.skip('Not sure how to implement this.')
-    def test_scalar(self):
-        """Tests for fetching an association proxy to scalars as a list
-        attribute instead of a link object.
-
-        """
-        article = self.Article(id=1)
-        tag1 = self.Tag(name=u'foo')
-        tag2 = self.Tag(name=u'bar')
-        article.tags = [tag1, tag2]
-        self.session.add_all([article, tag1, tag2])
-        self.session.commit()
-        response = self.app.get('/api/article/1')
-        document = loads(response.data)
-        article = document['data']
-        assert ['bar', 'foo'] == sorted(article['attributes']['tag_names'])
 
 
 class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
