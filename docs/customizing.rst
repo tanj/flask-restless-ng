@@ -367,9 +367,9 @@ arguments. For preprocessors:
     ======================== ===================================================================================
     preprocessor name        keyword arguments
     ======================== ===================================================================================
-    ``GET_COLLECTION``       ``filters``, ``sort``, ``group_by``, ``single``
+    ``GET_COLLECTION``       ``filters``, ``sort``, ``group_by``
     ``GET_RESOURCE``         ``resource_id``
-    ``GET_RELATION``         ``resource_id``, ``relation_name``, ``filters``, ``sort``, ``group_by``, ``single``
+    ``GET_RELATION``         ``resource_id``, ``relation_name``, ``filters``, ``sort``, ``group_by``
     ``GET_RELATED_RESOURCE`` ``resource_id``, ``relation_name``, ``related_resource_id``
 
     ``DELETE_RESOURCE``      ``resource_id``
@@ -389,9 +389,9 @@ For postprocessors:
     ============================ ===========================================================
     postprocessor name            keyword arguments
     ============================ ===========================================================
-    ``GET_COLLECTION``           ``result``, ``filters``, ``sort``, ``group_by``, ``single``
+    ``GET_COLLECTION``           ``result``, ``filters``, ``sort``, ``group_by``
     ``GET_RESOURCE``             ``result``
-    ``GET_TO_MANY_RELATION``     ``result``, ``filters``, ``sort``, ``group_by``, ``single``
+    ``GET_TO_MANY_RELATION``     ``result``, ``filters``, ``sort``, ``group_by``
     ``GET_TO_ONE_RELATION``      ``result``
     ``GET_RELATED_RESOURCE``     ``result``
 
@@ -401,7 +401,7 @@ For postprocessors:
 
     ``PATCH_RESOURCE``           ``result``
 
-    ``GET_TO_MANY_RELATIONSHIP`` ``result``, ``filters``, ``sort``, ``group_by``, ``single``
+    ``GET_TO_MANY_RELATIONSHIP`` ``result``, ``filters``, ``sort``, ``group_by``
     ``GET_TO_ONE_RELATIONSHIP``  ``result``
     ``DELETE_RELATIONSHIP``      ``was_deleted``
     ``POST_RELATIONSHIP``        none
@@ -415,8 +415,7 @@ arguments you need, and has a ``**kw`` argument for any additional keyword
 arguments (and any new arguments that may appear in future versions of
 Flask-Restless)::
 
-    def fetch_preprocessor(filters=None, sort=None, group_by=None, single=None,
-                           **kw):
+    def fetch_preprocessor(filters=None, sort=None, group_by=None, **kw):
         # Here perform any application-specific code...
 
 Next, instruct these preprocessors to be applied by Flask-Restless by using the
@@ -453,7 +452,7 @@ view functions and ultimately returned to the client.
 
 .. note::
 
-   For more information about the ``filters`` and ``single`` keyword arguments,
+   For more information about the ``filters`` keyword arguments,
    see :ref:`filtering`. For more information about ``sort`` and ``group_by``
    keyword arguments, see :ref:`sorting`.
 
@@ -500,8 +499,8 @@ This may be used, for example, if all :http:method:`post` requests require
 authentication::
 
     from flask import Flask
-    from flask.ext.restless import APIManager
-    from flask.ext.restless import ProcessingException
+    from flask_restless import APIManager
+    from flask_restless import ProcessingException
     from flask.ext.login import current_user
     from mymodels import User
     from mymodels import session

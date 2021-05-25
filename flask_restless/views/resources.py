@@ -182,7 +182,7 @@ class API(APIBase):
 
         """
         try:
-            filters, sort, group_by, single = self._collection_parameters()
+            filters, sort, group_by = self._collection_parameters()
         except (TypeError, ValueError, OverflowError) as exception:
             detail = 'Unable to decode filter objects as JSON list'
             return error_response(400, cause=exception, detail=detail)
@@ -194,7 +194,7 @@ class API(APIBase):
             temp_result = preprocessor(resource_id=resource_id,
                                        relation_name=relation_name,
                                        filters=filters, sort=sort,
-                                       group_by=group_by, single=single)
+                                       group_by=group_by)
             # Let the return value of the preprocessor be the new value of
             # instid, thereby allowing the preprocessor to effectively specify
             # which instance of the model to process on.
@@ -224,8 +224,7 @@ class API(APIBase):
             return self._get_collection_helper(resource=primary_resource,
                                                relation_name=relation_name,
                                                filters=filters, sort=sort,
-                                               group_by=group_by,
-                                               single=single)
+                                               group_by=group_by)
         else:
             resource = getattr(primary_resource, relation_name)
             return self._get_resource_helper(resource=resource,
@@ -285,7 +284,7 @@ class API(APIBase):
 
         """
         try:
-            filters, sort, group_by, single = self._collection_parameters()
+            filters, sort, group_by = self._collection_parameters()
         except (TypeError, ValueError, OverflowError) as exception:
             detail = 'Unable to decode filter objects as JSON list'
             return error_response(400, cause=exception, detail=detail)
@@ -294,11 +293,10 @@ class API(APIBase):
             return error_response(400, cause=exception, detail=detail)
 
         for preprocessor in self.preprocessors['GET_COLLECTION']:
-            preprocessor(filters=filters, sort=sort, group_by=group_by,
-                         single=single)
+            preprocessor(filters=filters, sort=sort, group_by=group_by)
 
         return self._get_collection_helper(filters=filters, sort=sort,
-                                           group_by=group_by, single=single)
+                                           group_by=group_by)
 
     def get(self, resource_id, relation_name, related_resource_id):
         """Returns the JSON document representing a resource or a collection of

@@ -961,56 +961,6 @@ Flask-Restless also understands the `PostgreSQL network address operators`_
 .. _SQLAlchemy column operators: https://docs.sqlalchemy.org/en/latest/core/expression_api.html#sqlalchemy.sql.operators.ColumnOperators
 .. _PostgreSQL network address operators: https://www.postgresql.org/docs/current/static/functions-net.html
 
-.. _single:
-
-Requiring singleton collections
-...............................
-
-If a client wishes a request for a collection to yield a response with a
-singleton collection, the client can use the ``filter[single]`` query
-parameter. The value of this parameter must be either ``1`` or ``0``. If the
-value of this parameter is ``1`` and the response would yield a collection of
-either zero or more than two resources, the server instead responds with
-:http:statuscode:`404`.
-
-For example, a request like
-
-.. sourcecode:: http
-
-   GET /api/person?filter[single]=1&filter[objects]=[{"name":"id","op":"eq","val":1}] HTTP/1.1
-   Host: example.com
-   Accept: application/vnd.api+json
-
-yields the response
-
-.. sourcecode:: http
-
-   HTTP/1.1 200 OK
-   Content-Type: application/vnd.api+json
-
-   {
-     "data": {
-       "id": "1",
-       "type": "person",
-       "links": {
-         "self": "http://example.com/api/person/1"
-       }
-     },
-     "links": {
-       "self": "http://example.com/api/person?filter[single]=1&filter[objects]=[{\"name\":\"id\",\"op\":\"eq\",\"val\":1}]"
-     },
-   }
-
-But a request like
-
-.. sourcecode:: http
-
-   GET /api/person?filter[single]=1 HTTP/1.1
-   Host: example.com
-   Accept: application/vnd.api+json
-
-would yield an error response if there were more than one ``Person`` instance
-in the database.
 
 Filter object examples
 ......................

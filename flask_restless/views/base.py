@@ -1280,8 +1280,8 @@ class APIBase(ModelView):
         """Gets filtering, sorting, grouping, and other settings from the
         request that affect the collection of resources in a response.
 
-        Returns a four-tuple of the form ``(filters, sort, group_by,
-        single)``. These can be provided to the
+        Returns a four-tuple of the form ``(filters, sort, group_by)``.
+        These can be provided to the
         :func:`~flask_restless.search.search` function; for more
         information, see the documentation for that function.
 
@@ -1330,13 +1330,7 @@ class APIBase(ModelView):
         else:
             group_by = []
 
-        # Determine whether the client expects a single resource response.
-        try:
-            single = bool(int(request.args.get('filter[single]', 0)))
-        except ValueError:
-            raise SingleKeyError('failed to extract Boolean from parameter')
-
-        return filters, sort, group_by, single
+        return filters, sort, group_by
 
     def _paginated(self, items, filters=None, sort=None, group_by=None):
         """Returns a :class:`Paginated` object representing the
@@ -1499,8 +1493,7 @@ class APIBase(ModelView):
         return result, 200
 
     def _get_collection_helper(self, resource=None, relation_name=None,
-                               filters=None, sort=None, group_by=None,
-                               single=False):
+                               filters=None, sort=None, group_by=None):
         if (resource is None) ^ (relation_name is None):
             raise ValueError('resource and relation must be both None or both'
                              ' not None')
@@ -1535,58 +1528,27 @@ class APIBase(ModelView):
         #
         # If the result of the search is a SQLAlchemy query object, we need to
         # return a collection.
-        if not single:
-            try:
-                paginated = self._paginated(search_items, filters=filters,
-                                            sort=sort, group_by=group_by)
-            except MultipleExceptions as e:
-                return errors_from_serialization_exceptions(e.exceptions)
-            except PaginationError as exception:
-                detail = exception.args[0]
-                return error_response(400, cause=exception, detail=detail)
-            # Wrap the resulting object or list of objects under a `data` key.
-            result['data'] = paginated.items
-            # Provide top-level links.
-            result['links'].update(paginated.pagination_links)
-            link_header = ','.join(paginated.header_links)
-            headers = dict(Link=link_header)
-            num_results = paginated.num_results
-        # Otherwise, the result of the search should be a single resource.
-        else:
-            try:
-                data = search_items.one()
-            except NoResultFound as exception:
-                detail = 'No result found'
-                return error_response(404, cause=exception, detail=detail)
-            except MultipleResultsFound as exception:
-                detail = 'Multiple results found'
-                return error_response(404, cause=exception, detail=detail)
-            only = self.sparse_fields.get(self.collection_name)
-            # Wrap the resulting resource under a `data` key.
-            try:
-                if self.use_resource_identifiers():
-                    serialize = self.serialize_relationship
-                else:
-                    serialize = self.serialize
-                result['data'] = serialize(data, only=only)
-            except SerializationException as exception:
-                return errors_from_serialization_exceptions([exception])
-            primary_key = primary_key_for(data)
-            pk_value = result['data'][primary_key]
-            # The URL at which a client can access the instance matching this
-            # search query.
-            url = f'{request.base_url}/{pk_value}'
-            headers = dict(Location=url)
-            num_results = 1
+        try:
+            paginated = self._paginated(search_items, filters=filters,
+                                        sort=sort, group_by=group_by)
+        except MultipleExceptions as e:
+            return errors_from_serialization_exceptions(e.exceptions)
+        except PaginationError as exception:
+            detail = exception.args[0]
+            return error_response(400, cause=exception, detail=detail)
+        # Wrap the resulting object or list of objects under a `data` key.
+        result['data'] = paginated.items
+        # Provide top-level links.
+        result['links'].update(paginated.pagination_links)
+        link_header = ','.join(paginated.header_links)
+        headers = dict(Link=link_header)
+        num_results = paginated.num_results
 
         # Determine the resources to include (in a compound document).
         if self.use_resource_identifiers():
             instances = resource
         else:
-            if not single:
-                instances = paginated.raw_items
-            else:
-                instances = search_items
+            instances = paginated.raw_items
         # Include any requested resources in a compound document.
         try:
             included = self.get_all_inclusions(instances)
@@ -1607,7 +1569,7 @@ class APIBase(ModelView):
         processor_type = 'GET_{0}'.format(processor_type)
         for postprocessor in self.postprocessors[processor_type]:
             postprocessor(result=result, filters=filters, sort=sort,
-                          group_by=group_by, single=single)
+                          group_by=group_by)
         # Add the metadata to the JSON API response object.
         #
         # HACK Provide the headers directly in the result dictionary, so that
