@@ -43,7 +43,6 @@ else:
     has_savalidation = True
 
 
-
 class CoolValidationError(Exception):
     """Raised when there is a validation error.
 

@@ -19,12 +19,10 @@ relationship on a particular instance of a SQLAlchemy model.
 """
 import inspect
 
-from flask import request
-
 from sqlalchemy import and_
-from sqlalchemy import or_
 from sqlalchemy import func
-from sqlalchemy.orm import aliased, joinedload, subqueryload, selectinload
+from sqlalchemy import or_
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql import false as FALSE
 

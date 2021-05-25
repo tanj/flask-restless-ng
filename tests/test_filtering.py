@@ -11,7 +11,6 @@
 # information, see LICENSE.AGPL and LICENSE.BSD.
 """Unit tests for filtering resources in client requests."""
 
-import unittest
 from datetime import date
 from datetime import datetime
 from datetime import time
@@ -20,12 +19,13 @@ from sqlalchemy import Column
 from sqlalchemy import Date
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
-from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Time
 from sqlalchemy import Unicode
-from sqlalchemy.dialects.postgresql import INET, TSVECTOR
+from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import INET
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
@@ -1054,6 +1054,7 @@ class TestAssociationProxy(SearchTestBase):
         articles = document['data']
         assert ['1', '2'] == sorted(article['id'] for article in articles)
 
+
 class TestTSVectorOperators(SearchTestBase):
     """Unit tests for the TSQuery operators in PostgreSQL.
     For more information, see `Text Search Types`_
@@ -1129,5 +1130,4 @@ class TestTSVectorOperators(SearchTestBase):
         response = self.search('/api/product', filters)
         document = loads(response.data)
         products = document['data']
-        assert [self.product1.id] == sorted(
-            int(product['id']) for product in products)
+        assert [self.product1.id] == [int(product['id']) for product in products]

@@ -10,12 +10,8 @@
 # License version 3 and under the 3-clause BSD license. For more
 # information, see LICENSE.AGPL and LICENSE.BSD.
 """Unit tests for metadata in server responses."""
-import unittest
-
 from sqlalchemy import Column
 from sqlalchemy import Integer
-
-from flask_restless import CONTENT_TYPE
 
 from .helpers import ManagerTestBase
 from .helpers import loads
@@ -51,4 +47,3 @@ class TestMetadata(ManagerTestBase):
         response = self.app.get('/api/person')
         document = loads(response.data)
         assert document['meta']['total'] == 15
-

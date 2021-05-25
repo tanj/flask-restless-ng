@@ -20,7 +20,6 @@ specification.
 """
 from __future__ import division
 
-import unittest
 from datetime import datetime
 
 from sqlalchemy import Column
@@ -52,9 +51,6 @@ except ImportError:
     has_flask_sqlalchemy = False
 else:
     has_flask_sqlalchemy = True
-
-
-
 
 
 class TestUpdating(ManagerTestBase):

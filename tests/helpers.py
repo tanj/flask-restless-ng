@@ -10,7 +10,6 @@
 # License version 3 and under the 3-clause BSD license. For more
 # information, see LICENSE.AGPL and LICENSE.BSD.
 """Helper functions for unit tests."""
-import types
 import unittest
 import uuid
 from datetime import date

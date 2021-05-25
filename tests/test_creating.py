@@ -21,7 +21,6 @@ specification.
 """
 from __future__ import division
 
-import unittest
 from datetime import datetime
 
 import dateutil

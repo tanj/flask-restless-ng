@@ -18,8 +18,6 @@ section of the JSON API specification.
 .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
 
 """
-import unittest
-
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import Unicode
