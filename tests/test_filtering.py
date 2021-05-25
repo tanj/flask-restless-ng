@@ -45,7 +45,6 @@ except ImportError:
     compat.register()
 
 
-
 #: The PostgreSQL class used to create a temporary database for testing.
 #:
 #: This class should be instantiated in the setUp method of test

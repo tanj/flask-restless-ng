@@ -1,4 +1,4 @@
-.. currentmodule:: flask.ext.restless
+.. currentmodule:: flask_restless
 
 .. _requestformat:
 
@@ -78,73 +78,6 @@ rolled back. Currently these errors are
 * :exc:`~sqlalchemy.exc.IntegrityError`,
 * :exc:`~sqlalchemy.exc.ProgrammingError`,
 * :exc:`~sqlalchemy.orm.exc.FlushError`.
-
-.. _jsonp:
-
-JSONP callbacks
----------------
-
-Flask-Restless responds to JavaScript clients that request JSONP responses. Add
-a ``callback=myfunc`` query parameter to the request URL on any request that
-yields a response that contains content (including endpoints for function
-evaluation; see :ref:`functionevaluation`) to have the JSON data of the
-response wrapped in the Javascript function ``myfunc``. This can be used to
-circumvent some cross domain scripting security issues.
-
-The :http:header:`Content-Type` of a JSONP response is
-:mimetype:`application/javascript` instead of
-:mimetype:`application/vnd.api+json` because the payload of such a response is
-not valid JSON API.
-
-For example, a request like this:
-
-.. sourcecode:: http
-
-   GET /api/person/1?callback=foo HTTP/1.1
-   Host: example.com
-   Accept: application/vnd.api+json
-
-will produce a response like this:
-
-.. sourcecode:: http
-
-   HTTP/1.1 200 OK
-   Content-Type: application/javascript
-
-   foo({"meta": {/*...*/}, "data": {/*...*/}})
-
-Then in your Javascript client code, write the function ``foo`` like this:
-
-.. sourcecode:: javascript
-
-   function foo(response) {
-     var meta, data;
-     meta = response.meta;
-     data = response.data;
-     // Do something cool here...
-   }
-
-.. COMMENT
-
-   The metadata includes the status code and the values of the HTTP headers,
-   including the `Link headers <https://tools.ietf.org/html/rfc5988>`_ parsed
-   in JSON format. For example, a link that looks like this:
-
-   .. This is adapted from the GitHub API documentation; see
-   .. <http://developer.github.com/v3/#json-p-callbacks> for more information.
-
-   .. sourcecode:: http
-
-      Link: <url1>; rel="next", <url2>; rel="foo"; bar="baz"
-
-   will look like this in the JSON metadata:
-
-   .. sourcecode:: javascript
-
-      [
-        {"url": "url1", "rel": "next"},
-        {"url": "url2", "rel": "foo", "bar": "baz"}
-      ]
 
 
 Cross-Origin Resource Sharing (CORS)

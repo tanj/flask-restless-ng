@@ -456,11 +456,6 @@ def jsonpify(*args, **kw):
     """Returns a JSONP response, with the specified arguments passed directly
     to :func:`flask.jsonify`.
 
-    If the request has a query parameter ``calback=foo``, then the body of the
-    response will be ``foo(<json>)``, where ``<json>`` is the JSON object that
-    would have been returned normally. If no such query parameter exists, this
-    simply returns ``<json>`` as normal.
-
     The positional and keyword arguments are passed directly to
     :func:`flask.jsonify`, with the following exceptions.
 
@@ -479,36 +474,10 @@ def jsonpify(*args, **kw):
     # this jsonpify function via its keyword arguments. This is a limitation of
     # the mimerender library: it has no way of making the headers and status
     # code known to the rendering functions.
-    headers = kw['meta'].pop(_HEADERS, {}) if 'meta' in kw else {}
-    status_code = kw['meta'].pop(_STATUS, 200) if 'meta' in kw else 200
+    meta = kw.get('meta', {})
+    headers = meta.pop(_HEADERS, {})
+    status_code = meta.pop(_STATUS, 200)
     response = jsonify(*args, **kw)
-    callback = request.args.get('callback', False)
-    if callback:
-        # Reload the data from the constructed JSON string so we can wrap it in
-        # a JSONP function.
-        document = json.loads(response.data)
-        # Force the 'Content-Type' header to be 'application/javascript'.
-        #
-        # Note that this is different from the mimetype used in Flask for JSON
-        # responses; Flask uses 'application/json'. We use
-        # 'application/javascript' because a JSONP response is valid
-        # Javascript, but not valid JSON (and not a valid JSON API document).
-        mimetype = 'application/javascript'
-        headers['Content-Type'] = mimetype
-        # # Add the headers and status code as metadata to the JSONP response.
-        # meta = _headers_to_json(headers) if headers is not None else {}
-        meta = {}
-        meta['status'] = status_code
-        if 'meta' in document:
-            document['meta'].update(meta)
-        else:
-            document['meta'] = meta
-        inner = json.dumps(document)
-        content = '{0}({1})'.format(callback, inner)
-        # Note that this is different from the mimetype used in Flask for JSON
-        # responses; Flask uses 'application/json'. We use
-        # 'application/javascript' because a JSONP response is not valid JSON.
-        response = current_app.response_class(content, mimetype=mimetype)
     if 'Content-Type' not in headers:
         headers['Content-Type'] = CONTENT_TYPE
     # Set the headers on the HTTP response as well.

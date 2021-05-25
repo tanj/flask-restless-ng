@@ -115,19 +115,3 @@ class TestFunctionEvaluation(ManagerTestBase):
         response = self.app.get('/api/eval/person?functions={0}'.format(query))
         assert response.status_code == 400
         # TODO check error message here
-
-    def test_jsonp(self):
-        """Test for JSON-P callbacks."""
-        person = self.Person(age=10)
-        self.session.add(person)
-        self.session.commit()
-        functions = [dict(name='sum', field='age')]
-        response = self.app.get('/api/eval/person?functions={0}'
-                                '&callback=foo'.format(dumps(functions)))
-        assert response.status_code == 200
-        assert response.mimetype == 'application/javascript'
-        assert response.data.startswith(b'foo(')
-        assert response.data.endswith(b')')
-        document = loads(response.data[4:-1])
-        results = document['data']
-        assert [10.0] == results

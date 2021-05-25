@@ -83,19 +83,6 @@ class TestFetchCollection(ManagerTestBase):
         response = self.app.get('/api/person', headers=headers)
         assert response.status_code == 406
 
-    def test_jsonp(self):
-        """Test for a JSON-P callback on a collection of resources."""
-        person1 = self.Person(id=1)
-        person2 = self.Person(id=2)
-        self.session.add_all([person1, person2])
-        self.session.commit()
-        response = self.app.get('/api/person?callback=foo')
-        assert response.data.startswith(b'foo(')
-        assert response.data.endswith(b')')
-        document = loads(response.data[4:-1])
-        people = document['data']
-        assert ['1', '2'] == sorted(person['id'] for person in people)
-
     def test_callable_query(self):
         """Tests for making a query with a custom callable ``query`` attribute.
 
@@ -245,7 +232,7 @@ class TestFetchCollection(ManagerTestBase):
         person_ids = list(map(itemgetter('id'), people))
         assert ['3', '2'] == person_ids[-2:]
         # TODO In Python 2.7 or later, this should be a set literal.
-        assert set(['1', '4']) == set(person_ids[:2])
+        assert {'1', '4'} == set(person_ids[:2])
 
 
 class TestFetchResource(ManagerTestBase):
@@ -273,18 +260,6 @@ class TestFetchResource(ManagerTestBase):
         # self.manager.create_api(Article)
         self.manager.create_api(Person)
         # self.manager.create_api(Tag)
-
-    def test_jsonp(self):
-        """Test for a JSON-P callback on a single resource request."""
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-        response = self.app.get('/api/person/1?callback=foo')
-        assert response.data.startswith(b'foo(')
-        assert response.data.endswith(b')')
-        document = loads(response.data[4:-1])
-        person = document['data']
-        assert person['id'] == '1'
 
     @unittest.skip('Currently not supported')
     def test_alternate_primary_key(self):
