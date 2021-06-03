@@ -822,11 +822,9 @@ class TestProcessors(ManagerTestBase):
         self.manager.create_api(self.Person, preprocessors=preprocessors)
         response = self.app.get('/api/person')
         assert response.status_code == 403
-        document = loads(response.data)
-        errors = document['errors']
+        errors = response.json['errors']
         assert len(errors) == 1
-        error = errors[0]
-        assert 'forbidden' == error['detail']
+        assert 'forbidden' == errors[0]['detail']
 
     def test_resource(self):
         """Tests for running a preprocessor on a request to fetch a

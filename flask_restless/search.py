@@ -26,6 +26,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql import false as FALSE
 
+from .exceptions import BadRequest
 from .helpers import get_model
 from .helpers import get_related_association_proxy_model
 from .helpers import get_related_model
@@ -411,10 +412,17 @@ def search(session, model, filters=None, sort=None, _initial_query=None):
     else:
         query = session_query(session, model)
 
-    # Filter the query.
-    filters = [Filter.from_dictionary(model, f) for f in filters]
-    # This function call may raise an exception.
-    filters = [create_filter(model, f) for f in filters]
+    try:
+        # Filter the query.
+        filters = [Filter.from_dictionary(model, f) for f in filters]
+
+        # This function call may raise an exception.
+        filters = [create_filter(model, f) for f in filters]
+    except UnknownField as e:
+        raise BadRequest(cause=e, details=f'Invalid filter object: No such field "{e.field}"') from e
+    except Exception as e:
+        raise BadRequest(cause=e, details='Unable to construct query') from e
+
     query = query.filter(*filters)
 
     # Order the query. If no order field is specified, order by primary

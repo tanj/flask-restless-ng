@@ -34,7 +34,17 @@ class Article(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String(16))
     author_id = Column(Integer, ForeignKey('person.id'))
+
     author = relationship('Person', backref=backref('articles'))
+    comments = relationship('Comment', backref=backref('article'))
+
+
+class Comment(Base):
+    __tablename__ = 'comment'
+
+    id = Column(Integer, primary_key=True)
+    author_id = Column(Integer, ForeignKey('person.id'))
+    article_id = Column(Integer, ForeignKey('article.id'))
 
 
 @unittest.skip("Slow test, for manual run only")
@@ -46,14 +56,16 @@ class TestPerformance(unittest.TestCase):
         session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=self.engine))
 
         Base.metadata.create_all(bind=self.engine)
-        session.bulk_save_objects([Person(id=i, name=f'Person {i}') for i in range(10000)])
-        session.bulk_save_objects([Article(id=i, title=f'Title {i}', author_id=1) for i in range(10000)])
+        session.bulk_save_objects([Person(id=i, name=f'Person {i}') for i in range(1, 10001)])
+        session.bulk_save_objects([Article(id=i, title=f'Title {i}', author_id=i % 3) for i in range(1, 101)])
+        session.bulk_save_objects([Comment(id=i, author_id=i, article_id=i) for i in range(1, 11)])
 
         self.test_client = app.test_client()
 
         api_manager = APIManager(app=app, session=session, url_prefix='/api')
         api_manager.create_api(Person, collection_name='people', page_size=0)
         api_manager.create_api(Article, collection_name='articles', page_size=0)
+        api_manager.create_api(Comment, collection_name='comments', page_size=0)
         self.profile = cProfile.Profile()
 
     def tearDown(self):
@@ -62,10 +74,17 @@ class TestPerformance(unittest.TestCase):
     def test_loading_collection(self):
         self.profile.enable()
         start_time = time.time()
-        response = self.test_client.get('/api/articles')
+        response = self.test_client.get('/api/people?include=articles')
         self.profile.disable()
         processing_time = time.time() - start_time
-        print('Fetch 10000 articles time:', processing_time)
+        print('Fetch 10000 authors with include time:', processing_time)
         stats = pstats.Stats(self.profile)
-        stats.sort_stats('time', 'cumulative').print_stats(20)
+        stats.sort_stats('time', 'cumulative').print_stats(40)
+        assert response.status_code == 200
+
+    def test_loading_single(self):
+        start_time = time.time()
+        response = self.test_client.get('/api/people/1')
+        processing_time = time.time() - start_time
+        print('Fetch time:', processing_time)
         assert response.status_code == 200

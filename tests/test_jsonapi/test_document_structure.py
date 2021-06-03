@@ -514,6 +514,5 @@ class TestDocumentStructure(ManagerTestBase):
 
         """
         response = self.app.get('/api/person')
-        document = loads(response.data)
-        jsonapi = document['jsonapi']
+        jsonapi = response.json['jsonapi']
         assert '1.0' == jsonapi['version']

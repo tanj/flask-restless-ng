@@ -34,11 +34,11 @@ from ..serialization import SerializationException
 from .base import JSONAPI_VERSION
 from .base import APIBase
 from .base import MultipleExceptions
-from .base import SingleKeyError
 from .base import error
 from .base import error_response
 from .base import errors_from_serialization_exceptions
 from .base import errors_response
+from .base import collection_parameters
 from .helpers import changes_on_update
 
 
@@ -181,14 +181,7 @@ class API(APIBase):
             GET /<collection_name>/<resource_id>/<relation_name>
 
         """
-        try:
-            filters, sort = self._collection_parameters()
-        except (TypeError, ValueError, OverflowError) as exception:
-            detail = 'Unable to decode filter objects as JSON list'
-            return error_response(400, cause=exception, detail=detail)
-        except SingleKeyError as exception:
-            detail = 'Invalid format for filter[single] query parameter'
-            return error_response(400, cause=exception, detail=detail)
+        filters, sort = collection_parameters()
 
         for preprocessor in self.preprocessors['GET_RELATION']:
             temp_result = preprocessor(resource_id=resource_id,
@@ -281,14 +274,7 @@ class API(APIBase):
         response in this method.
 
         """
-        try:
-            filters, sort = self._collection_parameters()
-        except (TypeError, ValueError, OverflowError) as exception:
-            detail = 'Unable to decode filter objects as JSON list'
-            return error_response(400, cause=exception, detail=detail)
-        except SingleKeyError as exception:
-            detail = 'Invalid format for filter[single] query parameter'
-            return error_response(400, cause=exception, detail=detail)
+        filters, sort = collection_parameters()
 
         for preprocessor in self.preprocessors['GET_COLLECTION']:
             preprocessor(filters=filters, sort=sort)

@@ -24,8 +24,7 @@ from ..helpers import collection_name
 from ..helpers import get_by
 from ..helpers import get_related_model
 from ..helpers import is_like_list
-from .base import APIBase
-from .base import SingleKeyError
+from .base import APIBase, collection_parameters
 from .base import error
 from .base import error_response
 from .base import errors_response
@@ -93,14 +92,7 @@ class RelationshipAPI(APIBase):
             detail = 'No resource with ID {0}'.format(resource_id)
             return error_response(404, detail=detail)
         if is_like_list(primary_resource, relation_name):
-            try:
-                filters, sort = self._collection_parameters()
-            except (TypeError, ValueError, OverflowError) as exception:
-                detail = 'Unable to decode filter objects as JSON list'
-                return error_response(400, cause=exception, detail=detail)
-            except SingleKeyError as exception:
-                detail = 'Invalid format for filter[single] query parameter'
-                return error_response(400, cause=exception, detail=detail)
+            filters, sort = collection_parameters()
             return self._get_collection_helper(resource=primary_resource,
                                                relation_name=relation_name,
                                                filters=filters, sort=sort)

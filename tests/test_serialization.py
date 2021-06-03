@@ -66,36 +66,6 @@ class DecoratedInterval(TypeDecorator):
     impl = Interval
 
 
-class TestFetchCollection(ManagerTestBase):
-    """Tests for serializing when fetching from a collection endpoint."""
-
-    def setUp(self):
-        super(TestFetchCollection, self).setUp()
-
-        class Person(self.Base):
-            __tablename__ = 'person'
-            id = Column(Integer, primary_key=True)
-
-        self.Person = Person
-        self.Base.metadata.create_all()
-
-    def test_exception_single(self):
-        """Tests for a serialization exception on a filtered single
-        response.
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-
-        self.manager.create_api(self.Person, serializer=raise_exception)
-
-        query_string = {'filter[single]': 1}
-        response = self.app.get('/api/person', query_string=query_string)
-        check_sole_error(response, 500, ['Failed to serialize', 'type',
-                                         'person', 'ID', '1'])
-
-
 class TestFetchResource(ManagerTestBase):
     """Tests for serializing when fetching from a resource endpoint."""
 
@@ -365,8 +335,8 @@ class TestFetchResource(ManagerTestBase):
         error1, error2 = errors
         assert error1['status'] == 500
         assert error2['status'] == 500
-        assert 'Failed to serialize included resource' in error1['detail']
-        assert 'Failed to serialize included resource' in error2['detail']
+        assert 'Failed to serialize resource' in error1['detail']
+        assert 'Failed to serialize resource' in error2['detail']
         assert 'ID 1' in error1['detail'] or 'ID 1' in error2['detail']
         assert 'ID 2' in error1['detail'] or 'ID 2' in error2['detail']
 

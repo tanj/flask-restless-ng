@@ -21,6 +21,7 @@ from uuid import uuid1
 
 from flask import Blueprint
 
+from .views.base import FetchCollection
 from .helpers import collection_name
 from .helpers import model_for
 from .helpers import primary_key_for
@@ -679,7 +680,7 @@ class APIManager(object):
         add_rule = blueprint.add_url_rule
 
         # The URLs that will be routed below.
-        collection_url = '/{0}'.format(collection_name)
+        collection_url = f'/{collection_name}'
         resource_url = '{0}/<resource_id>'.format(collection_url)
         related_resource_url = '{0}/<relation_name>'.format(resource_url)
         to_many_resource_url = \
@@ -716,6 +717,19 @@ class APIManager(object):
         add_rule(relationship_url, methods=relationship_methods,
                  view_func=relationship_api_view)
 
+        get_collection_function = FetchCollection.as_view(
+            name=f'{collection_name}_get_collection',
+            session=session,
+            model=model,
+            api_manager=self,
+            preprocessors=preprocessors_['GET_COLLECTION'],
+            postprocessors=postprocessors_['GET_COLLECTION'],
+            max_page_size=max_page_size,
+            page_size=page_size
+        )
+        if 'GET' in methods:
+            add_rule(collection_url, view_func=get_collection_function, methods=['GET'])
+
         # The URL for accessing the entire collection. (POST is special because
         # the :meth:`API.post` method doesn't have any arguments.)
         #
@@ -723,11 +737,6 @@ class APIManager(object):
         collection_methods = frozenset(('POST', )) & methods
         add_rule(collection_url, view_func=api_view,
                  methods=collection_methods)
-        collection_methods = frozenset(('GET', )) & methods
-        collection_defaults = dict(resource_id=None, relation_name=None,
-                                   related_resource_id=None)
-        add_rule(collection_url, view_func=api_view,
-                 methods=collection_methods, defaults=collection_defaults)
 
         # The URL for accessing a single resource. (DELETE and PATCH are
         # special because the :meth:`API.delete` and :meth:`API.patch` methods

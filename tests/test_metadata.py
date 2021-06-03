@@ -41,7 +41,7 @@ class TestMetadata(ManagerTestBase):
         includes the total number of results as part of the JSON response.
 
         """
-        people = [self.Person() for n in range(15)]
+        people = [self.Person() for _ in range(15)]
         self.session.add_all(people)
         self.session.commit()
         response = self.app.get('/api/person')

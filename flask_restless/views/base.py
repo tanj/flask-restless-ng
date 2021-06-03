@@ -33,10 +33,12 @@ from flask import json
 from flask import jsonify
 from flask import request
 from flask.views import MethodView
+from flask.views import View
 from mimerender import FlaskMimeRender
 from mimerender import register_mime
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.query import Query
+from sqlalchemy.orm import selectinload
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import parse_options_header
 
@@ -47,12 +49,13 @@ from ..helpers import primary_key_value
 from ..helpers import serializer_for
 from ..helpers import url_for
 from ..search import ComparisonToNull
-from ..search import UnknownField
+
 from ..search import search
 from ..search import search_relationship
 from ..serialization import DeserializationException
 from ..serialization import SerializationException
 from ..serialization import simple_relationship_serialize
+from ..exceptions import Error, BadRequest
 from .helpers import count
 from .helpers import upper_keys as upper
 
@@ -94,10 +97,6 @@ FILTER_PARAM = 'filter[objects]'
 #: request.
 SORT_PARAM = 'sort'
 
-#: The query parameter key that identifies grouping fields in a
-#: :http:method:`get` request.
-GROUP_PARAM = 'group'
-
 #: The query parameter key that identifies the page number in a
 #: :http:method:`get` request.
 PAGE_NUMBER_PARAM = 'page[number]'
@@ -138,12 +137,31 @@ chain = chain.from_iterable
 register_mime('jsonapi', (CONTENT_TYPE, ))
 
 
-class SingleKeyError(KeyError):
-    """Raised when attempting to parse the "single" query parameter reveals
-    that the client did not correctly provide a Boolean value.
+def collection_parameters():
+    """Gets filtering, sorting and other settings from the
+    request that affect the collection of resources in a response.
+
+    Returns a tuple of the form ``(filters, sort)``.
+    These can be provided to the
+    :func:`~flask_restless.search.search` function; for more
+    information, see the documentation for that function.
 
     """
-    pass
+    try:
+        # Determine filtering options.
+        filters = json.loads(request.args.get(FILTER_PARAM, '[]'))
+
+        # Determine sorting options.
+        sort = request.args.get(SORT_PARAM)
+        if sort:
+            sort = [('-', value[1:]) if value.startswith('-') else ('+', value)
+                    for value in sort.split(',')]
+        else:
+            sort = []
+    except (TypeError, KeyError, ValueError) as e:
+        raise BadRequest(cause=e, details='Unable to decode filter objects as JSON list') from e
+
+    return filters, sort
 
 
 class PaginationError(Exception):
@@ -557,7 +575,7 @@ def resources_from_path(instance, path):
         thislevel = nextlevel
         nextlevel = set()
         # Follow the relation given in the path to get the "neighbor"
-        # resources of any resource in the curret level of the
+        # resources of any resource in the current level of the
         # breadth-first traversal.
         if path:
             relation = path.pop(0)
@@ -750,7 +768,6 @@ def errors_from_serialization_exceptions(exceptions, included=False):
 #: :class:`mimerender.FlaskMimeRender` class. The second pair of parentheses
 #: creates the decorator, so that we can simply use the variable ``mimerender``
 #: as a decorator.
-# TODO fill in xml renderer
 mimerender = FlaskMimeRender()(default='jsonapi', jsonapi=jsonpify)
 
 
@@ -926,7 +943,7 @@ class Paginated(object):
                 # page.
                 query_params[PAGE_NUMBER_PARAM] = str(num)
                 url = Paginated._to_url(base_url, query_params)
-                link_string = '<{0}>; rel="{1}"'.format(url, rel)
+                link_string = f'<{url}>; rel="{rel}"'
                 self._header_links.append(link_string)
                 self._pagination_links[rel] = url
         # TODO Here we should really make the attributes immutable:
@@ -1015,6 +1032,145 @@ class ModelView(MethodView):
         super(ModelView, self).__init__(*args, **kw)
         self.session = session
         self.model = model
+
+
+class FetchCollection(View):
+    """Processes requests to fetch a resource collection."""
+
+    decorators = [catch_processing_exceptions, requires_json_api_accept, requires_json_api_mimetype, mimerender]
+
+    def __init__(self, session, model, api_manager, page_size=10, max_page_size=100, preprocessors=None, postprocessors=None, includes=None):
+        self.session = session
+        self.model = model
+        self.api_manager = api_manager
+        self.page_size = page_size
+        self.max_page_size = max_page_size
+        self.preprocessors = preprocessors or []
+        self.postprocessors = postprocessors or []
+        # TODO: parse request arguments here
+        self.sparse_fields = parse_sparse_fields()
+        if includes:
+            self.default_includes = frozenset(includes)
+        else:
+            self.default_includes = None
+
+    def dispatch_request(self):
+        try:
+            return self.get_data()
+        except Error as e:
+            return error_response(e.http_code, cause=e.cause, detail=e.details)
+        except MultipleExceptions as e:
+            return errors_from_serialization_exceptions(e.exceptions)
+
+    def get_data(self):
+        filters, sort = collection_parameters()
+        for preprocessor in self.preprocessors:
+            preprocessor(filters=filters, sort=sort)
+        page_size = int(request.args.get(PAGE_SIZE_PARAM, self.page_size))
+        if page_size > self.max_page_size:
+            raise BadRequest(details=f"Page size must not exceed the server's maximum: {self.max_page_size}")
+        if page_size < 0:
+            raise BadRequest(details='Page size can not be negative')
+        page_number = int(request.args.get(PAGE_NUMBER_PARAM, 1))
+        if page_number < 0:
+            raise BadRequest(details='Page number can not be negative')
+
+        query = search(self.session, self.model, filters=filters, sort=sort)
+
+        to_include = request.args.get('include')
+        if to_include is None:
+            to_include = self.default_includes
+        else:
+            to_include = set(to_include.split(','))
+
+        inclusion_tree = dict()
+
+        if to_include:
+            join_paths = set()
+            for path in to_include:
+                tree = path.split('.')
+                current_tree = inclusion_tree
+                for level in tree:
+                    current_tree[level] = current_tree.get(level, {})
+                    current_tree = current_tree[level]
+                for i in range(len(tree)):
+                    join_paths.add('.'.join(tree[:i+1]))
+
+            for path in join_paths:
+                query = query.options(selectinload(self.model, path))
+
+        if page_size == 0:
+            instances = query.all()
+            num_results = len(instances)
+            prev = None
+            next_ = None
+            first = None
+            last = None
+        else:
+            num_results = count(self.session, query)
+            first = 1
+            if num_results == 0:
+                last = 1
+            else:
+                last = int(math.ceil(num_results / page_size))
+            prev = page_number - 1 if page_number > 1 else None
+            next_ = page_number + 1 if page_number < last else None
+            offset = (page_number - 1) * page_size
+            # TODO Use Query.slice() instead, since it's easier to use.
+            instances = query.limit(page_size).offset(offset).all()
+        serializer = self.api_manager.serializer_for(self.model)
+        collection_name = self.api_manager.collection_name(self.model)
+        only = self.sparse_fields.get(collection_name)
+        data = [serializer(instance, only=only) for instance in instances]
+        paginated_data = Paginated(data, page_size=page_size, num_results=num_results, next_=next_, prev=prev, first=first, last=last)
+        links = {'self': self.api_manager.url_for(self.model)}
+        links.update(paginated_data.pagination_links)
+        link_header = ','.join(paginated_data.header_links)
+        headers = dict(Link=link_header)
+        result = {
+            'jsonapi': {'version': JSONAPI_VERSION},
+            'data': paginated_data.items,
+            'links': links,
+            'meta': {'total': paginated_data.num_results}
+        }
+
+        if to_include:
+
+            def get_inclusions(inclusion_tree, instances):
+                stack = []
+                while True:
+                    for key, sub_tree in inclusion_tree.items():
+                        new_instances = set()
+                        for instance in instances:
+                            included_instance = getattr(instance, key)
+                            if not included_instance:
+                                continue
+                            if isinstance(included_instance, list):
+                                new_instances.update(set(included_instance))
+                            else:
+                                new_instances.add(included_instance)
+                        if sub_tree and new_instances:
+                            stack.append((sub_tree, new_instances))
+                        yield new_instances
+                    if not stack:
+                        break
+                    inclusion_tree, instances = stack.pop()
+
+            include_set = set(chain(get_inclusions(inclusion_tree, instances)))
+            include_list = []
+            serialization_exceptions = []
+            for instance in include_set:
+                include_serializer = self.api_manager.serializer_for(type(instance))
+                try:
+                    include_list.append(include_serializer(instance))
+                except SerializationException as e:
+                    serialization_exceptions.append(e)
+            if serialization_exceptions:
+                raise MultipleExceptions(serialization_exceptions)
+            result['included'] = include_list
+        for postprocessor in self.postprocessors:
+            postprocessor(result=result, filters=filters, sort=sort)
+        return result, 200, headers
 
 
 class APIBase(ModelView):
@@ -1121,6 +1277,12 @@ class APIBase(ModelView):
             # Check if the subclass has the method before trying to decorate it.
             if hasattr(self, method):
                 decorate(method, catch_integrity_errors(self.session))
+
+    def dispatch_request(self, *args, **kwargs):
+        try:
+            return super().dispatch_request(*args, **kwargs)
+        except Error as e:
+            return error_response(e.http_code, cause=e.cause, detail=e.details)
 
     def collection_processor_type(self, *args, **kw):
         """The suffix for the pre- and postprocessor identifiers for
@@ -1250,62 +1412,12 @@ class APIBase(ModelView):
         # one instance. Otherwise, collect the resources to include for
         # each instance in `instances`.
         if isinstance(instance_or_instances, (Query, list)):
-            to_include = set(chain(self.resources_to_include(resource)
-                                   for resource in instance_or_instances))
+            to_include = set(chain(self.resources_to_include(resource) for resource in instance_or_instances))
         else:
             to_include = self.resources_to_include(instance_or_instances)
         # This may raise MultipleExceptions if there are problems
         # serializing the included resources.
         return self._serialize_many(to_include)
-
-    def _collection_parameters(self):
-        """Gets filtering, sorting and other settings from the
-        request that affect the collection of resources in a response.
-
-        Returns a tuple of the form ``(filters, sort)``.
-        These can be provided to the
-        :func:`~flask_restless.search.search` function; for more
-        information, see the documentation for that function.
-
-        """
-        # Determine filtering options.
-        filters = json.loads(request.args.get(FILTER_PARAM, '[]'))
-        # # TODO fix this using the below
-        # filters = [strings_to_dates(self.model, f) for f in filters]
-
-        # # resolve date-strings as required by the model
-        # for param in search_params.get('filters', list()):
-        #     if 'name' in param and 'val' in param:
-        #         query_model = self.model
-        #         query_field = param['name']
-        #         if '__' in param['name']:
-        #             fieldname, relation = param['name'].split('__')
-        #             submodel = getattr(self.model, fieldname)
-        #             if isinstance(submodel, InstrumentedAttribute):
-        #                 query_model = submodel.property.mapper.class_
-        #                 query_field = relation
-        #             elif isinstance(submodel, AssociationProxy):
-        #                 # For the sake of brevity, rename this function.
-        #                 get_assoc = get_related_association_proxy_model
-        #                 query_model = get_assoc(submodel)
-        #                 query_field = relation
-        #         to_convert = {query_field: param['val']}
-        #         try:
-        #             result = strings_to_dates(query_model, to_convert)
-        #         except ValueError as exception:
-        #             current_app.logger.exception(str(exception))
-        #             return dict(message='Unable to construct query'), 400
-        #         param['val'] = result.get(query_field)
-
-        # Determine sorting options.
-        sort = request.args.get(SORT_PARAM)
-        if sort:
-            sort = [('-', value[1:]) if value.startswith('-') else ('+', value)
-                    for value in sort.split(',')]
-        else:
-            sort = []
-
-        return filters, sort
 
     def _paginated(self, items, filters=None, sort=None):
         """Returns a :class:`Paginated` object representing the
@@ -1482,13 +1594,6 @@ class APIBase(ModelView):
             search_items = search_(filters=filters, sort=sort)
         except ComparisonToNull as exception:
             detail = str(exception)
-            return error_response(400, cause=exception, detail=detail)
-        except UnknownField as exception:
-            detail = 'Invalid filter object: No such field "{0}"'
-            detail = detail.format(exception.field)
-            return error_response(400, cause=exception, detail=detail)
-        except Exception as exception:
-            detail = 'Unable to construct query'
             return error_response(400, cause=exception, detail=detail)
 
         # Prepare the dictionary that will contain the JSON API response.

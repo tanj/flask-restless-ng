@@ -231,8 +231,7 @@ class TestFiltering(SearchTestBase):
         filters = [dict(name='comments', op='any',
                         val=dict(name='content', op='like', val='%cool%'))]
         response = self.search('/api/person', filters)
-        document = loads(response.data)
-        people = document['data']
+        people = response.json['data']
         assert ['1', '3'] == sorted(person['id'] for person in people)
 
     def test_has_in_to_one(self):

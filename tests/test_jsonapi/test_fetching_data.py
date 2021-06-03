@@ -498,6 +498,17 @@ class TestInclusion(ManagerTestBase):
         assert all(c['type'] == 'article' for c in linked)
         assert ['1', '2'] == sorted(c['id'] for c in linked)
 
+    def test_include_for_collection(self):
+        self.session.add_all([self.Person(id=1, name=u'foo'), self.Person(id=2, name=u'bar'), self.Person(id=3, name=u'baz')])
+        self.session.add_all([self.Article(id=1, author_id=1), self.Article(id=2, author_id=2), self.Article(id=3, author_id=3)])
+        self.session.add_all([self.Comment(id=1, author_id=1, article_id=1)])
+        self.session.commit()
+        query_string = dict(include='articles,articles.comments')
+        response = self.app.get('/api/person', query_string=query_string)
+        assert response.status_code == 200
+        included = response.json['included']
+        assert len(included) == 4
+
     def test_include_multiple(self):
         """Tests that the client can specify multiple linked relations
         to include in a compound document.
@@ -1269,7 +1280,7 @@ class TestPagination(ManagerTestBase):
         .. _Pagination: http://jsonapi.org/format/#fetching-pagination
 
         """
-        people = [self.Person() for i in range(25)]
+        people = [self.Person() for _ in range(25)]
         self.session.add_all(people)
         self.session.commit()
         self.manager.create_api(self.Person, url_prefix='/api2',
