@@ -19,6 +19,7 @@ from datetime import timedelta
 from functools import wraps
 from json import JSONEncoder
 
+import jsonschema
 from flask import Flask
 from flask import json
 from sqlalchemy import create_engine
@@ -45,6 +46,13 @@ else:
 
 dumps = json.dumps
 loads = json.loads
+
+with open('tests/jsonapi-schema.json', 'r') as f:
+    json_api_schema = json.load(f)
+
+
+def validate_schema(data: dict):
+    jsonschema.validate(data, schema=json_api_schema)
 
 
 def isclass(obj):

@@ -27,6 +27,7 @@ from sqlalchemy.orm import relationship
 
 from ..helpers import ManagerTestBase
 from ..helpers import loads
+from ..helpers import validate_schema
 
 
 class TestFetchingData(ManagerTestBase):
@@ -73,11 +74,6 @@ class TestFetchingData(ManagerTestBase):
         self.Base.metadata.create_all()
         self.manager.create_api(Article)
         self.manager.create_api(Person)
-        # HACK Need to create APIs for these other models because otherwise
-        # we're not able to create the link URLs to them.
-        #
-        # TODO Fix this by simply not creating links to related models for
-        # which no API has been made.
         self.manager.create_api(Comment)
 
     def test_single_resource(self):
@@ -94,7 +90,8 @@ class TestFetchingData(ManagerTestBase):
         self.session.commit()
         response = self.app.get('/api/article/1')
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         article = document['data']
         assert article['id'] == '1'
         assert article['type'] == 'article'
@@ -113,7 +110,8 @@ class TestFetchingData(ManagerTestBase):
         self.session.commit()
         response = self.app.get('/api/article')
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         articles = document['data']
         assert ['1'] == sorted(article['id'] for article in articles)
 
