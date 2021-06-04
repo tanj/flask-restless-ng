@@ -1,7 +1,7 @@
 API
 ===
 
-.. module:: flask.ext.restless
+.. module:: flask_restless
 
 This part of the documentation documents all the public classes and functions
 in Flask-Restless-NG.
@@ -21,8 +21,6 @@ Global helper functions
 -----------------------
 
 .. autofunction:: collection_name(model, _apimanager=None)
-
-.. autofunction:: model_for(collection_name, _apimanager=None)
 
 .. autofunction:: serializer_for(model, _apimanager=None)
 

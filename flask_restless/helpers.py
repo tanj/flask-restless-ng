@@ -404,26 +404,6 @@ class KnowsAPIManagers:
         self.created_managers.add(apimanager)
 
 
-class ModelFinder(KnowsAPIManagers, Singleton):
-    """The singleton class that backs the :func:`model_for` function."""
-
-    @lru_cache()
-    def __call__(self, resource_type, _apimanager=None, **kw):
-        if _apimanager is not None:
-            # This may raise ValueError.
-            return _apimanager.model_for(resource_type, **kw)
-        for manager in self.created_managers:
-            try:
-                return self(resource_type, _apimanager=manager, **kw)
-            except ValueError:
-                pass
-        message = ('No model with collection name {0} is known to any'
-                   ' APIManager objects; maybe you have not set the'
-                   ' `collection_name` keyword argument when calling'
-                   ' `APIManager.create_api()`?').format(resource_type)
-        raise ValueError(message)
-
-
 class CollectionNameFinder(KnowsAPIManagers, Singleton):
     """The singleton class that backs the :func:`collection_name` function."""
 
@@ -639,37 +619,6 @@ collection_name = CollectionNameFinder()
 #:     <function my_serializer at 0x...>
 #:
 serializer_for = SerializerFinder()
-
-#: Returns the model corresponding to the given collection name, as specified
-#: by the ``collection_name`` keyword argument to :meth:`APIManager.create_api`
-#: when it was previously invoked on the model.
-#:
-#: `collection_name` is a string corresponding to the "type" of a model. This
-#: should be a model on which :meth:`APIManager.create_api_blueprint` (or
-#: :meth:`APIManager.create_api`) has been invoked previously. If no API has
-#: been created for it, this function raises a `ValueError`.
-#:
-#: If `_apimanager` is not ``None``, it must be an instance of
-#: :class:`APIManager`. Restrict our search for endpoints exposing `model` to
-#: only endpoints created by the specified :class:`APIManager` instance.
-#:
-#: For example, suppose you have a model class ``Person`` and have created the
-#: appropriate Flask application and SQLAlchemy session::
-#:
-#:     >>> from mymodels import Person
-#:     >>> manager = APIManager(app, session=session)
-#:     >>> manager.create_api(Person, collection_name='people')
-#:     >>> model_for('people')
-#:     <class 'mymodels.Person'>
-#:
-#: This function is the inverse of :func:`collection_name`::
-#:
-#:     >>> manager.collection_name(manager.model_for('people'))
-#:     'people'
-#:     >>> manager.model_for(manager.collection_name(Person))
-#:     <class 'mymodels.Person'>
-#:
-model_for = ModelFinder()
 
 #: Returns the primary key to be used for the given model or model instance,
 #: as specified by the ``primary_key`` keyword argument to

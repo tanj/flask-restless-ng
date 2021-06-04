@@ -22,7 +22,6 @@ from uuid import uuid1
 from flask import Blueprint
 
 from .helpers import collection_name
-from .helpers import model_for
 from .helpers import primary_key_for
 from .helpers import primary_key_names
 from .helpers import serializer_for
@@ -162,12 +161,11 @@ class APIManager(object):
         self.app = app
 
         # Stash this instance so that it can be examined later by the global
-        # `url_for`, `model_for`, and `collection_name` functions.
+        # `url_for`, and `collection_name` functions.
         #
         # TODO This is a bit of poor code style because it requires the
         # APIManager to know about these global functions that use it.
         url_for.register(self)
-        model_for.register(self)
         collection_name.register(self)
         serializer_for.register(self)
         primary_key_for.register(self)

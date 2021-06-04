@@ -22,7 +22,6 @@ from sqlalchemy.orm import relationship
 from flask_restless import APIManager
 from flask_restless import IllegalArgumentError
 from flask_restless import collection_name
-from flask_restless import model_for
 from flask_restless import serializer_for
 from flask_restless import url_for
 
@@ -298,11 +297,9 @@ class TestAPIManager(ManagerTestBase):
 
         """
         super(TestAPIManager, self).tearDown()
-        model_for.created_managers.clear()
         url_for.created_managers.clear()
         collection_name.created_managers.clear()
         serializer_for.created_managers.clear()
-        model_for.__call__.cache_clear()
 
     def test_url_for(self):
         """Tests the global :func:`flask_restless.url_for` function."""
@@ -380,28 +377,6 @@ class TestAPIManager(ManagerTestBase):
         """
         with self.assertRaises(ValueError):
             serializer_for(self.Person)
-
-    def test_model_for(self):
-        """Tests the global :func:`flask_restless.model_for` function."""
-        self.manager.create_api(self.Person, collection_name='people')
-        assert model_for('people') is self.Person
-
-    def test_model_for_nonexistent(self):
-        """Tests that attempting to get the model for a nonexistent collection
-        yields an error.
-
-        """
-        with self.assertRaises(ValueError):
-            model_for('people')
-
-    def test_model_for_collection_name(self):
-        """Tests that :func:`flask_restless.model_for` is the inverse of
-        :func:`flask_restless.collection_name`.
-
-        """
-        self.manager.create_api(self.Person, collection_name='people')
-        assert collection_name(model_for('people')) == 'people'
-        assert model_for(collection_name(self.Person)) is self.Person
 
     def test_disallowed_methods(self):
         """Tests that disallowed methods respond with :http:status:`405`."""

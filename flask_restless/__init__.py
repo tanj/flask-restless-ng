@@ -24,7 +24,6 @@ __version__ = '2.0.0b'
 # Flask-Restless. End users of this package can import these names by doing
 # ``from flask_restless import APIManager``, for example.
 from .helpers import collection_name
-from .helpers import model_for
 from .helpers import primary_key_for
 from .helpers import serializer_for
 from .helpers import url_for
@@ -40,7 +39,6 @@ from .views import ProcessingException
 
 __all__ = [
     collection_name,
-    model_for,
     serializer_for,
     url_for,
     primary_key_for,
