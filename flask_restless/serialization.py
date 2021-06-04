@@ -665,7 +665,11 @@ class FastSerializer(Serializer):
         # Exclude column names that are blacklisted.
         columns = {column for column in columns if not column.startswith('__') and column not in COLUMN_BLACKLIST}
 
-        self._columns = columns
+        self._columns = frozenset(columns)
+
+    @property
+    def relationship_columns(self):
+        return frozenset(self._relations)
 
     def __call__(self, instance, only=None):
         columns = copy(self._columns)

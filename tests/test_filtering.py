@@ -68,7 +68,7 @@ class SearchTestBase(ManagerTestBase):
 
     """
 
-    def search(self, url, filters=None, single=None):
+    def search(self, url, filters=None):
         """Convenience function for performing a filtered :http:method:`get`
         request.
 
@@ -86,8 +86,6 @@ class SearchTestBase(ManagerTestBase):
         if filters is None:
             filters = []
         params = {'filter[objects]': dumps(filters)}
-        if single is not None:
-            params['filter[single]'] = 1 if single else 0
         return self.app.get(url, query_string=params)
 
 

@@ -34,11 +34,11 @@ from ..serialization import SerializationException
 from .base import JSONAPI_VERSION
 from .base import APIBase
 from .base import MultipleExceptions
+from .base import collection_parameters
 from .base import error
 from .base import error_response
 from .base import errors_from_serialization_exceptions
 from .base import errors_response
-from .base import collection_parameters
 from .helpers import changes_on_update
 
 

@@ -13,6 +13,7 @@
 import datetime
 import inspect
 from functools import lru_cache
+from typing import Any
 from typing import List
 
 from dateutil.parser import parse as parse_datetime
@@ -225,6 +226,10 @@ def primary_key_value(instance, as_string=False):
         return url_quote_plus(result.encode('utf-8'))
 
 
+def is_proxy(value: Any) -> bool:
+    return isinstance(value, AssociationProxy)
+
+
 def is_like_list(instance, relation):
     """Returns ``True`` if and only if the relation of `instance` whose name is
     `relation` is list-like.
@@ -240,7 +245,7 @@ def is_like_list(instance, relation):
         if hasattr(attr, 'property'):
             return attr.property.uselist
     related_value = getattr(type(instance), relation, None)
-    if isinstance(related_value, AssociationProxy):
+    if is_proxy(related_value):
         local_prop = related_value.local_attr.prop
         if isinstance(local_prop, RelProperty):
             return local_prop.uselist

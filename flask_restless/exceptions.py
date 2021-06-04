@@ -11,4 +11,3 @@ class Error(Exception):
 
 class BadRequest(Error):
     http_code = BAD_REQUEST
-

@@ -21,7 +21,6 @@ from uuid import uuid1
 
 from flask import Blueprint
 
-from .views.base import FetchCollection
 from .helpers import collection_name
 from .helpers import model_for
 from .helpers import primary_key_for
@@ -33,6 +32,7 @@ from .serialization import FastSerializer
 from .views import API
 from .views import FunctionAPI
 from .views import RelationshipAPI
+from .views.base import FetchCollection
 
 #: The names of HTTP methods that allow fetching information.
 READONLY_METHODS = frozenset(('GET', ))

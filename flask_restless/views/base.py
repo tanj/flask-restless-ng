@@ -37,25 +37,27 @@ from flask.views import View
 from mimerender import FlaskMimeRender
 from mimerender import register_mime
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm.query import Query
+from sqlalchemy.orm import load_only
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.query import Query
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import parse_options_header
 
+from ..exceptions import BadRequest
+from ..exceptions import Error
 from ..helpers import collection_name
 from ..helpers import get_model
 from ..helpers import is_like_list
+from ..helpers import is_proxy
 from ..helpers import primary_key_value
 from ..helpers import serializer_for
 from ..helpers import url_for
 from ..search import ComparisonToNull
-
 from ..search import search
 from ..search import search_relationship
 from ..serialization import DeserializationException
 from ..serialization import SerializationException
 from ..serialization import simple_relationship_serialize
-from ..exceptions import Error, BadRequest
 from .helpers import count
 from .helpers import upper_keys as upper
 
@@ -1084,20 +1086,30 @@ class FetchCollection(View):
             to_include = set(to_include.split(','))
 
         inclusion_tree = dict()
+        join_paths = set()
 
         if to_include:
-            join_paths = set()
             for path in to_include:
                 tree = path.split('.')
                 current_tree = inclusion_tree
                 for level in tree:
                     current_tree[level] = current_tree.get(level, {})
                     current_tree = current_tree[level]
-                for i in range(len(tree)):
-                    join_paths.add('.'.join(tree[:i+1]))
+                join_paths.add(tree[0])
 
-            for path in join_paths:
+        serializer = self.api_manager.serializer_for(self.model)
+        for path in join_paths:
+            if not is_proxy(getattr(self.model, path)):
                 query = query.options(selectinload(self.model, path))
+
+        # if we do not need include the full resource, only query 'id' for relationship data
+        for path in serializer.relationship_columns:
+            if path not in join_paths and not is_proxy(getattr(self.model, path)):
+                options = selectinload(self.model, path)
+                # if request contains filters we need to load all columns
+                if not filters:
+                    options = options.options(load_only('id'))
+                query = query.options(options)
 
         if page_size == 0:
             instances = query.all()
@@ -1118,7 +1130,6 @@ class FetchCollection(View):
             offset = (page_number - 1) * page_size
             # TODO Use Query.slice() instead, since it's easier to use.
             instances = query.limit(page_size).offset(offset).all()
-        serializer = self.api_manager.serializer_for(self.model)
         collection_name = self.api_manager.collection_name(self.model)
         only = self.sparse_fields.get(collection_name)
         data = [serializer(instance, only=only) for instance in instances]
@@ -1145,7 +1156,7 @@ class FetchCollection(View):
                             included_instance = getattr(instance, key)
                             if not included_instance:
                                 continue
-                            if isinstance(included_instance, list):
+                            if is_like_list(instance, key):
                                 new_instances.update(set(included_instance))
                             else:
                                 new_instances.add(included_instance)

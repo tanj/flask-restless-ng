@@ -24,7 +24,8 @@ from ..helpers import collection_name
 from ..helpers import get_by
 from ..helpers import get_related_model
 from ..helpers import is_like_list
-from .base import APIBase, collection_parameters
+from .base import APIBase
+from .base import collection_parameters
 from .base import error
 from .base import error_response
 from .base import errors_response
