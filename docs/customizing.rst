@@ -152,25 +152,6 @@ exception is that the keys ``'id'`` and ``'type'`` must always appear,
 regardless of whether they appear in `only`. The function must return a
 dictionary representation of the resource object.
 
-To help with creating custom serialization functions, Flask-Restless provides a
-:func:`simple_serialize` function, which returns the result of its basic,
-built-in serialization. Therefore, one way to customize your serialized objects
-is to do something like this::
-
-    from flask.ext.restless import simple_serialize
-
-    def my_serializer(instance, only=None):
-        # Get the default serialization of the instance.
-        result = simple_serialize(instance, only=only)
-        # Make your changes here.
-        result['meta']['foo'] = 'bar'
-        # Return the dictionary.
-        return result
-
-You could also define a subclass of the :class:`DefaultSerializer` class,
-override the :meth:`DefaultSerializer.__call__` method, and provide an instance
-of that class to the `serializer` keyword argument.
-
 For deserialization, define your custom deserialization function like this::
 
     def deserialize(document):

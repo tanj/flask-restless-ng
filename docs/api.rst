@@ -31,8 +31,6 @@ Global helper functions
 Serialization helpers
 ---------------------
 
-.. autofunction:: simple_serialize(instance, only=None)
-
 .. autoclass:: Serializer
 
 .. autoclass:: Deserializer

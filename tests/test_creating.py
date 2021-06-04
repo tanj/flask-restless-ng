@@ -41,7 +41,6 @@ from flask_restless import CONTENT_TYPE
 from flask_restless import APIManager
 from flask_restless import DeserializationException
 from flask_restless import SerializationException
-from flask_restless import simple_serialize
 
 from .helpers import BetterJSONEncoder as JSONEncoder
 from .helpers import FlaskSQLAlchemyTestBase
@@ -498,25 +497,13 @@ class TestCreating(ManagerTestBase):
         person = document['data']
         assert person['type'] == 'people'
 
-    # TODO This behavior is no longer supported
-    #
-    # def test_nested_relations(self):
-    #     # Test with nested objects
-    #     data = {'name': 'Rodriguez', 'age': 70,
-    #             'computers': [{'name': 'iMac', 'vendor': 'Apple',
-    #                            'programs': [{'program':{'name':'iPhoto'}}]}]}
-    #     response = self.app.post('/api/person', data=dumps(data))
-    #     assert 201 == response.status_code
-    #     response = self.app.get('/api/computer/2/programs')
-    #     programs = loads(response.data)['objects']
-    #     assert programs[0]['program']['name'] == 'iPhoto'
-
     def test_custom_serialization(self):
         """Tests for custom deserialization."""
         temp = []
 
+        # TODO: revisit
         def serializer(instance, *args, **kw):
-            result = simple_serialize(instance)
+            result = {'attributes': {'foo': 'bar'}}
             result['attributes']['foo'] = temp.pop()
             return result
 

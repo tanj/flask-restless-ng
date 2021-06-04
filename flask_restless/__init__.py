@@ -33,7 +33,6 @@ from .serialization import DeserializationException
 from .serialization import Deserializer
 from .serialization import SerializationException
 from .serialization import Serializer
-from .serialization import simple_serialize
 from .views import CONTENT_TYPE
 from .views import ProcessingException
 
@@ -48,7 +47,6 @@ __all__ = [
     Deserializer,
     SerializationException,
     Serializer,
-    simple_serialize,
     CONTENT_TYPE,
     ProcessingException,
 ]
