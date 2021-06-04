@@ -4,6 +4,21 @@ Changelog
 Changes in Flask-Restless-NG
 ============================
 
+Version 2.0.0b
+--------------
+This is a Beta version with some backward incompatible changes, and more incompatible changes are expected before the
+final release
+
+Refactored fetching resource collections:
+- SQL query optimizations for 'include' and 'relationship' objects, using `selectinload`
+  (3x-5x performance improvement when tested on large datasets)
+
+Deprecations:
+- 'single' parameter is no longer supported - makes code complicated, is not defined in JSON API specs and can be easily
+  replicated on a client side
+- 'group' parameter is not longer supported - not defined in JSON API specifications, confusing and broken for PostrgeSQL
+- JSONP callbacks are no longer supported - please reach out if you have a use case for them
+
 Version 1.0.6
 -------------
 - Prevent redundant SQL queries during pagination and resource inclusion

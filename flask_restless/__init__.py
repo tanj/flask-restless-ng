@@ -17,7 +17,7 @@ SQLAlchemy models via the JSON API protocol.
 #:
 #: This should be the same as the version specified in the :file:`setup.py`
 #: file.
-__version__ = '1.0.6'
+__version__ = '2.0.0b'
 
 
 # The following names are available as part of the public API for
