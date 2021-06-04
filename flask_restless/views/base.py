@@ -50,7 +50,6 @@ from ..helpers import get_model
 from ..helpers import is_like_list
 from ..helpers import is_proxy
 from ..helpers import primary_key_value
-from ..helpers import serializer_for
 from ..helpers import url_for
 from ..search import ComparisonToNull
 from ..search import search
@@ -1204,7 +1203,7 @@ class APIBase(ModelView):
     #: List of decorators applied to every method of this class.
     decorators = [catch_processing_exceptions] + ModelView.decorators
 
-    def __init__(self, session, model, preprocessors=None, postprocessors=None,
+    def __init__(self, session, model, api_manager, preprocessors=None, postprocessors=None,
                  primary_key=None, serializer=None, deserializer=None,
                  validation_exceptions=None, includes=None, page_size=10,
                  max_page_size=100, allow_to_many_replacement=False, *args,
@@ -1214,6 +1213,7 @@ class APIBase(ModelView):
         #: The name of the collection specified by the given model class
         #: to be used in the URL for the ReSTful API created.
         self.collection_name = collection_name(self.model)
+        self.api_manager = api_manager
 
         #: The default set of related resources to include in compound
         #: documents, given as a set of relationship paths.
@@ -1376,7 +1376,7 @@ class APIBase(ModelView):
                 # current resource, even though the current model may
                 # different from the model of the current instance.
                 try:
-                    serialize = serializer_for(model)
+                    serialize = self.api_manager.serializer_for(model)
                 except ValueError:
                     # TODO Should we fail instead, thereby effectively
                     # requiring that an API has been created for each

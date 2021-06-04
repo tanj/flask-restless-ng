@@ -43,7 +43,7 @@ VERSION_RE = r"^__version__ = ['\"]([^'\"]*)['\"]"
 #: required, so the user must install it explicitly.
 REQUIREMENTS = [
     'flask>=1.0',
-    'sqlalchemy>=1.2',
+    'sqlalchemy>=1.3',
     'python-dateutil>2.2',
     'mimerender>=0.5.2'
 ]

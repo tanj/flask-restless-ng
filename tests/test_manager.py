@@ -21,11 +21,10 @@ from sqlalchemy.orm import relationship
 
 from flask_restless import APIManager
 from flask_restless import IllegalArgumentError
-from flask_restless import collection_name
-from flask_restless import serializer_for
-from flask_restless import url_for
+from flask_restless.helpers import collection_name
+from flask_restless.helpers import url_for
 
-from .helpers import FlaskSQLAlchemyTestBase
+
 from .helpers import ManagerTestBase
 from .helpers import SQLAlchemyTestBase
 from .helpers import force_content_type_jsonapi
@@ -299,7 +298,6 @@ class TestAPIManager(ManagerTestBase):
         super(TestAPIManager, self).tearDown()
         url_for.created_managers.clear()
         collection_name.created_managers.clear()
-        serializer_for.created_managers.clear()
 
     def test_url_for(self):
         """Tests the global :func:`flask_restless.url_for` function."""
@@ -368,15 +366,6 @@ class TestAPIManager(ManagerTestBase):
             pass
 
         self.manager.create_api(self.Person, serializer=my_function)
-        assert serializer_for(self.Person) == my_function
-
-    def test_serializer_for_nonexistent(self):
-        """Tests that attempting to get the serializer for an unknown
-        model yields an error.
-
-        """
-        with self.assertRaises(ValueError):
-            serializer_for(self.Person)
 
     def test_disallowed_methods(self):
         """Tests that disallowed methods respond with :http:status:`405`."""

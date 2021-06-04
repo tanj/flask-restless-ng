@@ -24,7 +24,6 @@ from flask import Blueprint
 from .helpers import collection_name
 from .helpers import primary_key_for
 from .helpers import primary_key_names
-from .helpers import serializer_for
 from .helpers import url_for
 from .serialization import DefaultDeserializer
 from .serialization import FastSerializer
@@ -149,7 +148,6 @@ class APIManager:
         # APIManager to know about these global functions that use it.
         url_for.register(self)
         collection_name.register(self)
-        serializer_for.register(self)
         primary_key_for.register(self)
 
         #: A mapping whose keys are models for which this object has
@@ -625,7 +623,7 @@ class APIManager:
         #
         # Rename some variables with long names for the sake of brevity.
         atmr = allow_to_many_replacement
-        api_view = API.as_view(apiname, session, model,
+        api_view = API.as_view(apiname, session, model, self,
                                # Keyword arguments for APIBase.__init__()
                                preprocessors=preprocessors_,
                                postprocessors=postprocessors_,
@@ -675,7 +673,7 @@ class APIManager:
         rapi_view = RelationshipAPI.as_view
         adftmr = allow_delete_from_to_many_relationships
         relationship_api_view = \
-            rapi_view(relationship_api_name, session, model,
+            rapi_view(relationship_api_name, session, model, self,
                       # Keyword arguments for APIBase.__init__()
                       preprocessors=preprocessors_,
                       postprocessors=postprocessors_,
