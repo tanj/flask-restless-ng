@@ -434,30 +434,3 @@ class TestAPIManager(ManagerTestBase):
         """
         with self.assertRaises(AttributeError):
             self.manager.create_api(self.Person, additional_attributes=['bogus'])
-
-
-class TestFSA(FlaskSQLAlchemyTestBase):
-    """Tests which use models defined using Flask-SQLAlchemy instead of pure
-    SQLAlchemy.
-
-    """
-
-    def setUp(self):
-        """Creates the Flask application, the APIManager, the database, and the
-        Flask-SQLAlchemy models.
-
-        """
-        super().setUp()
-
-        class Person(self.db.Model):
-            id = self.db.Column(self.db.Integer, primary_key=True)
-
-        self.Person = Person
-        self.db.create_all()
-
-    def test_init_app(self):
-        manager = APIManager(flask_sqlalchemy_db=self.db)
-        manager.create_api(self.Person)
-        manager.init_app(self.flaskapp)
-        response = self.app.get('/api/person')
-        assert response.status_code == 200

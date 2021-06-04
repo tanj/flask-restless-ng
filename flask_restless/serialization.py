@@ -40,10 +40,8 @@ from .helpers import get_related_model
 from .helpers import get_relations
 from .helpers import has_field
 from .helpers import is_like_list
-from .helpers import is_mapped_class
 from .helpers import primary_key_names
 from .helpers import primary_key_value
-from .helpers import serializer_for
 from .helpers import strings_to_datetimes
 from .helpers import url_for
 
@@ -480,26 +478,6 @@ class FastSerializer(Serializer):
                 attributes[key] = value.isoformat()
             elif isinstance(value, timedelta):
                 attributes[key] = value.total_seconds()
-
-        # TODO: Drop this in the future releases
-        # Recursively serialize any object that appears in the
-        # attributes. This may happen if, for example, the return value
-        # of one of the callable functions is an instance of another
-        # SQLAlchemy model class.
-        for key, val in attributes.items():
-            # This is a bit of a fragile test for whether the object
-            # needs to be serialized: we simply check if the class of
-            # the object is a mapped class.
-            if is_mapped_class(type(val)):
-                model_ = get_model(val)
-                try:
-                    serialize = serializer_for(model_)
-                except ValueError:
-                    # TODO Should this cause an exception, or fail
-                    # silently? See similar comments in `views/base.py`.
-                    # # raise SerializationException(instance)
-                    serialize = simple_serialize
-                attributes[key] = serialize(val)
 
         # Get the ID and type of the resource.
         id_ = str(getattr(instance, self._primary_key))

@@ -519,9 +519,6 @@ class TestServerSparseFieldsets(ManagerTestBase):
             author = relationship(Person, backref=backref('articles'))
             comments = relationship('Comment')
 
-            def first_comment(self):
-                return min(self.comments, key=lambda c: c.id)
-
         class Comment(self.Base):
             __tablename__ = 'comment'
             id = Column(Integer, primary_key=True)
@@ -668,49 +665,6 @@ class TestServerSparseFieldsets(ManagerTestBase):
         document = loads(response.data)
         photo = document['data']
         assert photo['attributes']['year'] == 2015
-
-    def test_additional_attributes_object(self):
-        """Tests that an additional attribute is serialized if it is an
-        instance of a SQLAlchemy model.
-
-        Technically, a resource's attribute MAY contain any valid JSON object,
-        so this is allowed by the `JSON API specification`_.
-
-        .. _JSON API specification: http://jsonapi.org/format/#document-structure-resource-object-attributes
-
-        """
-        article = self.Article(id=1)
-        comment1 = self.Comment(id=1)
-        comment2 = self.Comment(id=2)
-        article.comments = [comment1, comment2]
-        self.session.add_all([article, comment1, comment2])
-        self.session.commit()
-
-        # TODO: revisit
-        def add_foo(instance, *args, **kw):
-            result = {'id': '1', 'type': 'comment'}
-            if 'attributes' not in result:
-                result['attributes'] = {}
-            result['attributes']['foo'] = 'foo'
-            return result
-
-        self.manager.create_api(self.Article,
-                                additional_attributes=['first_comment'])
-        # Ensure that the comment object has a custom serialization
-        # function, so we can test that it is serialized using this
-        # function in particular.
-        self.manager.create_api(self.Comment, serializer=add_foo)
-        # HACK Need to create an API for this model because otherwise
-        # we're not able to create the link URLs to them.
-        self.manager.create_api(self.Person)
-
-        response = self.app.get('/api/article/1')
-        document = loads(response.data)
-        article = document['data']
-        first_comment = article['attributes']['first_comment']
-        assert first_comment['id'] == '1'
-        assert first_comment['type'] == 'comment'
-        assert first_comment['attributes']['foo'] == 'foo'
 
     def test_exclude(self):
         """Test for excluding columns from a resource's representation."""
@@ -1390,7 +1344,7 @@ class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
 
         self.Person = Person
         self.db.create_all()
-        self.manager = APIManager(self.flaskapp, flask_sqlalchemy_db=self.db)
+        self.manager = APIManager(self.flaskapp, session=self.db.session)
         self.manager.create_api(self.Person)
 
     def test_fetch_resource(self):

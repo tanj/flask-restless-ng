@@ -82,7 +82,7 @@ class IllegalArgumentError(Exception):
     pass
 
 
-class APIManager(object):
+class APIManager:
     """Provides a method for creating a public ReSTful JSON API with respect
     to a given :class:`~flask.Flask` application object.
 
@@ -96,12 +96,6 @@ class APIManager(object):
     `session` is the :class:`~sqlalchemy.orm.session.Session` object in
     which changes to the database will be made.
 
-    `flask_sqlalchemy_db` is the :class:`~flask.ext.sqlalchemy.SQLAlchemy`
-    object with which `app` has been registered and which contains the
-    database models for which API endpoints will be created.
-
-    If `flask_sqlalchemy_db` is not ``None``, `session` will be ignored.
-
     For example, to use this class with models defined in pure SQLAlchemy::
 
         from flask import Flask
@@ -114,16 +108,6 @@ class APIManager(object):
         mysession = Session()
         app = Flask(__name__)
         apimanager = APIManager(app, session=mysession)
-
-    and with models defined with Flask-SQLAlchemy::
-
-        from flask import Flask
-        from flask.ext.restless import APIManager
-        from flask.ext.sqlalchemy import SQLAlchemy
-
-        app = Flask(__name__)
-        db = SQLALchemy(app)
-        apimanager = APIManager(app, flask_sqlalchemy_db=db)
 
     `url_prefix` is the URL prefix at which each API created by this
     instance will be accessible. For example, if this is set to
@@ -152,11 +136,9 @@ class APIManager(object):
     #: formatting.
     APINAME_FORMAT = '{0}api'
 
-    def __init__(self, app=None, session=None, flask_sqlalchemy_db=None,
-                 preprocessors=None, postprocessors=None, url_prefix=None):
-        if session is None and flask_sqlalchemy_db is None:
-            msg = 'must specify either `flask_sqlalchemy_db` or `session`'
-            raise ValueError(msg)
+    def __init__(self, app=None, session=None, preprocessors=None, postprocessors=None, url_prefix=None):
+        if session is None:
+            raise ValueError('`session` can not be empty')
 
         self.app = app
 
@@ -179,11 +161,6 @@ class APIManager(object):
         #: List of blueprints created by :meth:`create_api` to be registered
         #: to the app when calling :meth:`init_app`.
         self.blueprints = []
-
-        # If a Flask-SQLAlchemy object is provided, prefer the session
-        # from that object.
-        if flask_sqlalchemy_db is not None:
-            session = flask_sqlalchemy_db.session
 
         # pre = preprocessors or {}
         # post = postprocessors or {}

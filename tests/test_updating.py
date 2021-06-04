@@ -1068,7 +1068,7 @@ class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
 
         self.Person = Person
         self.db.create_all()
-        self.manager = APIManager(self.flaskapp, flask_sqlalchemy_db=self.db)
+        self.manager = APIManager(self.flaskapp, session=self.db.session)
         self.manager.create_api(self.Person, methods=['PATCH'])
 
     def test_create(self):
