@@ -1005,7 +1005,7 @@ class TestAssociationProxy(ManagerTestBase):
         # TODO Fix this by simply not creating links to related models for
         # which no API has been made.
         self.manager.create_api(Tag)
-        self.manager.create_api(ArticleTag)
+        self.manager.create_api(ArticleTag, primary_key='article_id')
 
     def test_update(self):
         """Test for updating a model with a many-to-many relation that uses an

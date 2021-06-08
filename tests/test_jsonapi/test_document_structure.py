@@ -454,40 +454,6 @@ class TestDocumentStructure(ManagerTestBase):
         assert linkage['id'] == '1'
         assert linkage['type'] == 'person'
 
-    # def test_link_object(self):
-    #     """Tests for relations as resource URLs."""
-    #     # TODO configure the api manager here
-    #     person = self.Person(id=1)
-    #     self.session.add(person)
-    #     self.session.commit()
-    #     response = self.app.get('/api/person/1')
-    #     person = loads(response.data)['data']
-    #     links = person['relationships']['articles']['links']
-    #     # A link object must contain at least one of 'self', 'related',
-    #     # linkage to a compound document, or 'meta'.
-    #     assert links['self'].endswith('/api/person/1/links/articles')
-    #     assert links['related'].endswith('/api/person/1/articles')
-    #     # TODO should also include pagination links
-
-    # def test_link_object_allowable_keys(self):
-    #     """Tests that only allowable keys exist in the link object.
-
-    #     For more information, see the `Resource Relationships`_ section of the
-    #     JSON API specification.
-
-    #     .. _Resource Relationships: http://jsonapi.org/format/#document-structure-resource-relationships
-
-    #     """
-    #     response = self.app.get('/api/person')
-    #     document = loads(response.data)
-    #     allowed = ('self', 'resource', 'type', 'id', 'meta', 'first', 'last',
-    #                'next', 'prev')
-    #     alphanumeric = string.ascii_letters + string.digits
-    #     for link_name, link_object in document['links'].items():
-    #         if link_name not in ('first', 'last', 'next', 'prev', 'self'):
-    #             assert all(k in allowed or k[0] not in alphanumeric
-    #                        for k in link_object)
-
     def test_top_level_self_link(self):
         """Tests that there is a top-level links object containing a
         self link.

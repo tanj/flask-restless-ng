@@ -121,7 +121,7 @@ class TestCreating(ManagerTestBase):
         self.Base.metadata.create_all()
         self.manager.create_api(Person, methods=['POST'])
         self.manager.create_api(Article, methods=['POST'])
-        self.manager.create_api(Tag, methods=['POST'])
+        self.manager.create_api(Tag, methods=['POST'], primary_key='name')
 
     def test_wrong_content_type(self):
         """Tests that if a client specifies only
@@ -463,28 +463,10 @@ class TestCreating(ManagerTestBase):
 
         """
         data = dict(data=dict(type='tag', attributes=dict(name=u'foo')))
-        response = self.app.post('/api/tag', data=dumps(data))
+        response = self.app.post('/api/tag', json=data)
         assert response.status_code == 201
-        document = loads(response.data)
-        tag = document['data']
+        tag = response.json['data']
         assert tag['id'] == u'foo'
-
-    # TODO Not supported right now.
-    #
-    # def test_treat_as_id(self):
-    #     """Tests for specifying one attribute in a compound primary key by
-    #     which to create a resource.
-
-    #     """
-    #     manager = APIManager(self.flaskapp, session=self.session)
-    #     manager.create_api(self.User, primary_key='email')
-    #     data = dict(data=dict(type='user', id=1))
-    #     response = self.app.post('/api/user', data=dumps(data))
-    #     document = loads(response.data)
-    #     user = document['data']
-    #     assert user['id'] == '1'
-    #     assert user['type'] == 'user'
-    #     assert user['email'] == 'foo'
 
     def test_collection_name(self):
         """Tests for creating a resource with an alternate collection name."""
@@ -882,7 +864,7 @@ class TestAssociationProxy(ManagerTestBase):
         # TODO Fix this by simply not creating links to related models for
         # which no API has been made.
         self.manager.create_api(Tag)
-        self.manager.create_api(ArticleTag)
+        self.manager.create_api(ArticleTag, primary_key='article_id')
 
     def test_create(self):
         """Test for creating a new instance of the database model that has a

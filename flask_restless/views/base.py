@@ -56,7 +56,6 @@ from ..search import search
 from ..search import search_relationship
 from ..serialization import DeserializationException
 from ..serialization import SerializationException
-from ..serialization import simple_relationship_serialize
 from .helpers import count
 from .helpers import upper_keys as upper
 
@@ -1246,9 +1245,6 @@ class APIBase(ModelView):
         #: serialization.
         self.serialize = serializer
 
-        #: A custom serialization function for linkage objects.
-        self.serialize_relationship = simple_relationship_serialize
-
         #: A custom deserialization function for primary resources; see
         #: :ref:`serialization` for more information.
         #:
@@ -1369,7 +1365,7 @@ class APIBase(ModelView):
                 continue
             model = get_model(instance)
             if relationship:
-                serialize = self.serialize_relationship
+                result.append(self.api_manager.serialize_relationship(instance))
             else:
                 # Determine the serializer for this instance. If there
                 # is no serializer, use the default serializer for the
@@ -1382,18 +1378,19 @@ class APIBase(ModelView):
                     # requiring that an API has been created for each
                     # type of resource? This is mainly a design
                     # question.
-                    serialize = self.serialize
-            # This may raise ValueError
-            _type = collection_name(model)
-            # TODO The `only` keyword argument will be ignored when
-            # serializing relationships, so we don't really need to
-            # recompute this every time.
-            only = self.sparse_fields.get(_type)
-            try:
-                serialized = serialize(instance, only=only)
-                result.append(serialized)
-            except SerializationException as exception:
-                failed.append(exception)
+                    pass
+                else:
+                    # This may raise ValueError
+                    _type = collection_name(model)
+                    # TODO The `only` keyword argument will be ignored when
+                    # serializing relationships, so we don't really need to
+                    # recompute this every time.
+                    only = self.sparse_fields.get(_type)
+                    try:
+                        serialized = serialize(instance, only=only)
+                        result.append(serialized)
+                    except SerializationException as exception:
+                        failed.append(exception)
         if failed:
             raise MultipleExceptions(failed)
         return result

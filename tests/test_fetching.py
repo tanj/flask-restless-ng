@@ -1281,8 +1281,6 @@ class TestAssociationProxy(ManagerTestBase):
             id = Column(Integer, primary_key=True)
             tags = association_proxy('articletags', 'tag',
                                      creator=lambda tag: ArticleTag(tag=tag))
-            # tag_names = association_proxy('tags', 'name',
-            #                               creator=lambda name: Tag(name=name))
 
         class ArticleTag(self.Base):
             __tablename__ = 'articletag'
@@ -1310,7 +1308,7 @@ class TestAssociationProxy(ManagerTestBase):
         # TODO Fix this by simply not creating links to related models for
         # which no API has been made.
         self.manager.create_api(Tag)
-        self.manager.create_api(ArticleTag)
+        self.manager.create_api(ArticleTag, primary_key='article_id')
 
     def test_fetch(self):
         """Test for fetching a resource that has a many-to-many relation that

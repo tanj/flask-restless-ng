@@ -22,6 +22,7 @@ from uuid import uuid1
 from flask import Blueprint
 
 from .helpers import collection_name
+from .helpers import get_model
 from .helpers import primary_key_for
 from .helpers import primary_key_names
 from .helpers import url_for
@@ -370,7 +371,7 @@ class APIManager:
                              additional_attributes=None,
                              validation_exceptions=None, page_size=10,
                              max_page_size=100, preprocessors=None,
-                             postprocessors=None, primary_key=None,
+                             postprocessors=None, primary_key='id',
                              serializer=None, deserializer=None,
                              includes=None, allow_to_many_replacement=False,
                              allow_delete_from_to_many_relationships=False,
@@ -587,6 +588,7 @@ class APIManager:
             raise IllegalArgumentError(msg)
         if collection_name is None:
             collection_name = model.__table__.name
+
         # convert all method names to upper case
         methods = frozenset((m.upper() for m in methods))
         # the name of the API, for use in creating the view and the blueprint
@@ -612,7 +614,7 @@ class APIManager:
         # Create a default serializer and deserializer if none have been
         # provided.
         if serializer is None:
-            serializer = FastSerializer(model, collection_name, primary_key=primary_key,
+            serializer = FastSerializer(model, collection_name, self, primary_key=primary_key,
                                         only=only, exclude=exclude, additional_attributes=additional_attributes)
 
         session = self.session
@@ -756,6 +758,13 @@ class APIManager:
         self.created_apis_for[model] = APIInfo(collection_name, blueprint.name,
                                                serializer, primary_key, prefix)
         return blueprint
+
+    def serialize_relationship(self, instance):
+        model = get_model(instance)
+        return {
+            'id': str(getattr(instance, self.primary_key_for(model))),
+            'type': self.collection_name(model)
+        }
 
     def create_api(self, *args, **kw):
         """Creates and possibly registers a ReSTful API blueprint for

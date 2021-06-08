@@ -282,9 +282,16 @@ class TestAPIManager(ManagerTestBase):
             __tablename__ = 'tag'
             name = Column(Unicode, primary_key=True)
 
+        class Foo(self.Base):
+            __tablename__ = 'foo'
+
+            a = Column(Unicode, primary_key=True)
+            b = Column(Integer)
+
         self.Article = Article
         self.Person = Person
         self.Tag = Tag
+        self.Foo = Foo
         self.Base.metadata.create_all()
 
     # HACK If we don't include this, there seems to be an issue with the
@@ -317,21 +324,18 @@ class TestAPIManager(ManagerTestBase):
 
     def test_url_for_explicitly_sets_primary_key_in_links(self):
         """Should use the primary_key explicitly set when generating links"""
-        article = self.Article(id=1, title=u'my_article')
-        self.session.add(article)
+        instance = self.Foo(b=1, a=u'foo_bar')
+        self.session.add(instance)
         self.session.commit()
-        self.manager.create_api(self.Article, primary_key='title')
+        self.manager.create_api(self.Foo, primary_key='a')
 
-        response = self.app.get('/api/article')
-        document = loads(response.data)
+        response = self.app.get('/api/foo')
+        document = response.json
         articles = document['data']
         article = articles[0]
 
-        assert 'my_article' in article['links']['self']
+        assert 'foo_bar' in article['links']['self']
         assert '/1' not in article['links']['self']
-        author_links = article['relationships']['author']['links']
-        assert author_links['self'] == (
-            '/api/article/my_article/relationships/author')
 
     def test_url_for_nonexistent(self):
         """Tests that attempting to get the URL for an unknown model yields an
@@ -377,18 +381,10 @@ class TestAPIManager(ManagerTestBase):
 
     def test_missing_id(self):
         """Tests that calling :meth:`APIManager.create_api` on a model without
-        an ``id`` column doesn't raise an exception but creates an ``id``
-        attribute using the ``primary_key``
-
+        an ``id`` column raises an exception if `primary_key` is not provided
         """
-        self.manager.create_api(self.Tag)
-        tag1 = self.Tag(name='smart')
-        self.session.add(tag1)
-        self.session.commit()
-        response = self.app.get(f'/api/tag/{tag1.name}')
-        document = loads(response.data)
-        assert 'id' in document['data'].keys()
-        assert document['data']['id'] == tag1.name
+        with self.assertRaises(ValueError):
+            self.manager.create_api(self.Tag)
 
     def test_empty_collection_name(self):
         """Tests that calling :meth:`APIManager.create_api` with an empty

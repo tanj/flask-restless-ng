@@ -1024,7 +1024,7 @@ class TestAssociationProxy(SearchTestBase):
         #
         # TODO Fix this by simply not creating links to related models for
         # which no API has been made.
-        self.manager.create_api(ArticleTag)
+        self.manager.create_api(ArticleTag, primary_key='article_id')
         self.manager.create_api(Tag)
 
     def test_any(self):
