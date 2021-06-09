@@ -21,7 +21,6 @@ from uuid import uuid1
 
 from flask import Blueprint
 
-from .helpers import collection_name
 from .helpers import get_model
 from .helpers import primary_key_for
 from .helpers import primary_key_names
@@ -148,7 +147,6 @@ class APIManager:
         # TODO This is a bit of poor code style because it requires the
         # APIManager to know about these global functions that use it.
         url_for.register(self)
-        collection_name.register(self)
         primary_key_for.register(self)
 
         #: A mapping whose keys are models for which this object has
@@ -267,7 +265,10 @@ class APIManager:
         :class:`APIManager`.
 
         """
-        return self.created_apis_for[model].collection_name
+        try:
+            return self.created_apis_for[model].collection_name
+        except KeyError:
+            raise ValueError(f'Model is not registered with the API: {model}')
 
     def serializer_for(self, model):
         """Returns the serializer for the specified model, as specified
@@ -619,8 +620,7 @@ class APIManager:
 
         session = self.session
         if deserializer is None:
-            deserializer = DefaultDeserializer(self.session, model,
-                                               allow_client_generated_ids)
+            deserializer = DefaultDeserializer(self.session, model, self, allow_client_generated_ids=allow_client_generated_ids)
         # Create the view function for the API for this model.
         #
         # Rename some variables with long names for the sake of brevity.
@@ -656,12 +656,10 @@ class APIManager:
 
         # The URLs that will be routed below.
         collection_url = f'/{collection_name}'
-        resource_url = '{0}/<resource_id>'.format(collection_url)
-        related_resource_url = '{0}/<relation_name>'.format(resource_url)
-        to_many_resource_url = \
-            '{0}/<related_resource_id>'.format(related_resource_url)
-        relationship_url = \
-            '{0}/relationships/<relation_name>'.format(resource_url)
+        resource_url = f'{collection_url}/<resource_id>'
+        related_resource_url = f'{resource_url}/<relation_name>'
+        to_many_resource_url = f'{related_resource_url}/<related_resource_id>'
+        relationship_url = f'{resource_url}/relationships/<relation_name>'
 
         # Create relationship URL endpoints.
         #
@@ -672,18 +670,18 @@ class APIManager:
         # word `relationships` as the name of a relation of an article
         # object.
         relationship_api_name = f'{apiname}_relationships'
-        rapi_view = RelationshipAPI.as_view
         adftmr = allow_delete_from_to_many_relationships
-        relationship_api_view = \
-            rapi_view(relationship_api_name, session, model, self,
-                      # Keyword arguments for APIBase.__init__()
-                      preprocessors=preprocessors_,
-                      postprocessors=postprocessors_,
-                      primary_key=primary_key,
-                      validation_exceptions=validation_exceptions,
-                      allow_to_many_replacement=allow_to_many_replacement,
-                      # Keyword arguments RelationshipAPI.__init__()
-                      allow_delete_from_to_many_relationships=adftmr)
+        relationship_api_view = RelationshipAPI.as_view(
+            relationship_api_name, session, model, self,
+            # Keyword arguments for APIBase.__init__()
+            preprocessors=preprocessors_,
+            postprocessors=postprocessors_,
+            primary_key=primary_key,
+            validation_exceptions=validation_exceptions,
+            allow_to_many_replacement=allow_to_many_replacement,
+            # Keyword arguments RelationshipAPI.__init__()
+            allow_delete_from_to_many_relationships=adftmr
+        )
         # When PATCH is allowed, certain non-PATCH requests are allowed
         # on relationship URLs.
         relationship_methods = READONLY_METHODS & methods

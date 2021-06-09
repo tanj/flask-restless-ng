@@ -20,7 +20,6 @@ from flask import json
 from flask import request
 from werkzeug.exceptions import BadRequest
 
-from ..helpers import collection_name
 from ..helpers import get_by
 from ..helpers import get_related_model
 from ..helpers import has_field
@@ -468,7 +467,7 @@ class API(APIBase):
                 newvalue = []
                 not_found = []
                 for rel in linkage:
-                    expected_type = collection_name(related_model)
+                    expected_type = self.api_manager.collection_name(related_model)
                     type_ = rel['type']
                     if type_ != expected_type:
                         detail = 'Type must be {0}, not {1}'
@@ -495,7 +494,7 @@ class API(APIBase):
                 if linkage is None:
                     newvalue = None
                 else:
-                    expected_type = collection_name(related_model)
+                    expected_type = self.api_manager.collection_name(related_model)
                     type_ = linkage['type']
                     if type_ != expected_type:
                         detail = 'Type must be {0}, not {1}'

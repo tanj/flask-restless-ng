@@ -404,28 +404,6 @@ class KnowsAPIManagers:
         self.created_managers.add(apimanager)
 
 
-class CollectionNameFinder(KnowsAPIManagers, Singleton):
-    """The singleton class that backs the :func:`collection_name` function."""
-
-    @lru_cache()
-    def __call__(self, model, _apimanager=None, **kw):
-        if _apimanager is not None:
-            if model not in _apimanager.created_apis_for:
-                message = ('APIManager {0} has not created an API for model '
-                           ' {1}').format(_apimanager, model)
-                raise ValueError(message)
-            return _apimanager.collection_name(model, **kw)
-        for manager in self.created_managers:
-            try:
-                return self(model, _apimanager=manager, **kw)
-            except ValueError:
-                pass
-        message = ('Model {0} is not known to any APIManager'
-                   ' objects; maybe you have not called'
-                   ' APIManager.create_api() for this model.').format(model)
-        raise ValueError(message)
-
-
 class UrlFinder(KnowsAPIManagers, Singleton):
     """The singleton class that backs the :func:`url_for` function."""
 
@@ -536,37 +514,6 @@ class PrimaryKeyFinder(KnowsAPIManagers, Singleton):
 #:  .. _Flask request context: http://flask.pocoo.org/docs/0.10/reqcontext/
 #:
 url_for = UrlFinder()
-
-#: Returns the collection name for the specified model, as specified by the
-#: ``collection_name`` keyword argument to :meth:`APIManager.create_api` when
-#: it was previously invoked on the model.
-#:
-#: `model` is a SQLAlchemy model class. This should be a model on which
-#: :meth:`APIManager.create_api_blueprint` (or :meth:`APIManager.create_api`)
-#: has been invoked previously. If no API has been created for it, this
-#: function raises a `ValueError`.
-#:
-#: If `_apimanager` is not ``None``, it must be an instance of
-#: :class:`APIManager`. Restrict our search for endpoints exposing `model` to
-#: only endpoints created by the specified :class:`APIManager` instance.
-#:
-#: For example, suppose you have a model class ``Person`` and have created the
-#: appropriate Flask application and SQLAlchemy session::
-#:
-#:     >>> from mymodels import Person
-#:     >>> manager = APIManager(app, session=session)
-#:     >>> manager.create_api(Person, collection_name='people')
-#:     >>> collection_name(Person)
-#:     'people'
-#:
-#: This function is the inverse of :func:`model_for`::
-#:
-#:     >>> manager.collection_name(manager.model_for('people'))
-#:     'people'
-#:     >>> manager.model_for(manager.collection_name(Person))
-#:     <class 'mymodels.Person'>
-#:
-collection_name = CollectionNameFinder()
 
 #: Returns the primary key to be used for the given model or model instance,
 #: as specified by the ``primary_key`` keyword argument to

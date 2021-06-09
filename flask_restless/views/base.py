@@ -45,7 +45,6 @@ from werkzeug.http import parse_options_header
 
 from ..exceptions import BadRequest
 from ..exceptions import Error
-from ..helpers import collection_name
 from ..helpers import get_model
 from ..helpers import is_like_list
 from ..helpers import is_proxy
@@ -720,28 +719,21 @@ def error_from_serialization_exception(exception, included=False):
     """Returns an error dictionary, as returned by :func:`error`,
     representing the given instance of :exc:`SerializationException`.
 
-    The ``detail`` element in the returned dictionary will be more
-    detailed if :attr:`SerializationException.instance` is not ``None``.
-
     If `included` is ``True``, this indicates that the exceptions were
     raised by attempts to serialize resources included in a compound
     document; this modifies the error message for the exceptions a bit
     to indicate that the resources were included resource, not primary
-    data. If :attr:`~SerializationException.instance` is not ``None``,
-    however, that message is preferred and `included` has no effect.
-
+    data.
     """
     # As long as `exception` is a `SerializationException` that has been
     # initialized with an actual instance of a SQLAlchemy model, these
     # helper function calls should not cause a problem.
-    type_ = collection_name(get_model(exception.instance))
-    id_ = primary_key_value(exception.instance)
     if exception.message is not None:
         detail = exception.message
     else:
         resource = 'included resource' if included else 'resource'
         detail = 'Failed to serialize {0} of type {1} and ID {2}'
-        detail = detail.format(resource, type_, id_)
+        detail = detail.format(resource, exception.resource_type, exception.resource_id)
     return error(status=500, detail=detail)
 
 
@@ -1211,7 +1203,7 @@ class APIBase(ModelView):
 
         #: The name of the collection specified by the given model class
         #: to be used in the URL for the ReSTful API created.
-        self.collection_name = collection_name(self.model)
+        self.collection_name = api_manager.collection_name(self.model)
         self.api_manager = api_manager
 
         #: The default set of related resources to include in compound
@@ -1381,7 +1373,7 @@ class APIBase(ModelView):
                     pass
                 else:
                     # This may raise ValueError
-                    _type = collection_name(model)
+                    _type = self.api_manager.collection_name(model)
                     # TODO The `only` keyword argument will be ignored when
                     # serializing relationships, so we don't really need to
                     # recompute this every time.

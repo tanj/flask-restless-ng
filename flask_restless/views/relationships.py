@@ -20,7 +20,6 @@ from flask import json
 from flask import request
 from werkzeug.exceptions import BadRequest
 
-from ..helpers import collection_name
 from ..helpers import get_by
 from ..helpers import get_related_model
 from ..helpers import is_like_list
@@ -149,10 +148,9 @@ class RelationshipAPI(APIBase):
             type_ = rel['type']
             # The type name must match the collection name of model of the
             # relation.
-            if type_ != collection_name(related_model):
-                detail = ('Type must be {0}, not'
-                          ' {1}').format(collection_name(related_model), type_)
-                return error_response(409, detail=detail)
+            collection_name = self.api_manager.collection_name(related_model)
+            if type_ != collection_name:
+                return error_response(409, detail=f'Type must be {collection_name}, not {type_}')
             # Get the new objects to add to the relation.
             new_value = get_by(self.session, related_model, rel['id'])
             if new_value is None:
@@ -244,11 +242,9 @@ class RelationshipAPI(APIBase):
                     type_ = rel['type']
                     # The type name must match the collection name of model of
                     # the relation.
-                    if type_ != collection_name(related_model):
-                        detail = 'Type must be {0}, not {1}'
-                        detail = detail.format(collection_name(related_model),
-                                               type_)
-                        return error_response(409, detail=detail)
+                    collection_name = self.api_manager.collection_name(related_model)
+                    if type_ != collection_name:
+                        return error_response(409, detail=f'Type must be {collection_name}, not {type_}')
                     id_ = rel['id']
                     obj = get_by(self.session, related_model, id_)
                     replacement.append(obj)
@@ -264,11 +260,9 @@ class RelationshipAPI(APIBase):
                 type_ = data['type']
                 # The type name must match the collection name of model of the
                 # relation.
-                if type_ != collection_name(related_model):
-                    detail = ('Type must be {0}, not'
-                              ' {1}').format(collection_name(related_model),
-                                             type_)
-                    return error_response(409, detail=detail)
+                collection_name = self.api_manager.collection_name(related_model)
+                if type_ != collection_name:
+                    return error_response(409, detail=f'Type must be {collection_name}, not {type_}')
                 id_ = data['id']
                 replacement = get_by(self.session, related_model, id_)
             # If the to-one relationship resource or any of the to-many
@@ -334,7 +328,7 @@ class RelationshipAPI(APIBase):
             return error_response(404, detail=detail)
         # We assume that the relation is a to-many relation.
         related_model = get_related_model(self.model, relation_name)
-        related_type = collection_name(related_model)
+        related_type = self.api_manager.collection_name(related_model)
         relation = getattr(instance, relation_name)
         data = data.pop('data')
         not_found = []

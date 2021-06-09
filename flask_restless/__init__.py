@@ -18,11 +18,11 @@ __version__ = '2.0.0b'
 # The following names are available as part of the public API for
 # Flask-Restless. End users of this package can import these names by doing
 # ``from flask_restless import APIManager``, for example.
-from .manager import APIManager
-from .manager import IllegalArgumentError
-from .serialization import DeserializationException
-from .serialization import Deserializer
-from .serialization import SerializationException
-from .serialization import Serializer
-from .views import CONTENT_TYPE
-from .views import ProcessingException
+from .manager import APIManager  # noqa
+from .manager import IllegalArgumentError  # noqa
+from .serialization import DeserializationException  # noqa
+from .serialization import Deserializer  # noqa
+from .serialization import SerializationException  # noqa
+from .serialization import Serializer  # noqa
+from .views import CONTENT_TYPE  # noqa
+from .views import ProcessingException  # noqa

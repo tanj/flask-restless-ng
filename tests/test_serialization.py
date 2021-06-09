@@ -21,6 +21,7 @@ testing code decoupled from the serialization implementation.
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
+from functools import partial
 from uuid import uuid1
 
 from sqlalchemy import Column
@@ -44,7 +45,7 @@ from .helpers import check_sole_error
 from .helpers import loads
 
 
-def raise_exception(instance, *args, **kw):
+def raise_exception(resource_type, instance, *args, **kw):
     """Immediately raises a :exc:`SerializationException` with access to
     the provided `instance` of a SQLAlchemy model.
 
@@ -52,7 +53,7 @@ def raise_exception(instance, *args, **kw):
     exceptions.
 
     """
-    raise SerializationException(instance)
+    raise SerializationException(instance, resource_id=instance.id, resource_type=resource_type)
 
 
 class DecoratedDateTime(TypeDecorator):
@@ -284,7 +285,7 @@ class TestFetchResource(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
 
-        self.manager.create_api(self.Person, serializer=raise_exception)
+        self.manager.create_api(self.Person, serializer=partial(raise_exception, 'person'))
 
         response = self.app.get('/api/person/1')
         check_sole_error(response, 500, ['Failed to serialize', 'type',
@@ -302,7 +303,7 @@ class TestFetchResource(ManagerTestBase):
         self.session.commit()
 
         self.manager.create_api(self.Person)
-        self.manager.create_api(self.Article, serializer=raise_exception)
+        self.manager.create_api(self.Article, serializer=partial(raise_exception, 'article'))
 
         query_string = {'include': 'articles'}
         response = self.app.get('/api/person/1', query_string=query_string)
@@ -325,7 +326,7 @@ class TestFetchResource(ManagerTestBase):
         self.session.commit()
 
         self.manager.create_api(self.Article)
-        self.manager.create_api(self.Person, serializer=raise_exception)
+        self.manager.create_api(self.Person, serializer=partial(raise_exception, 'article'))
 
         query_string = {'include': 'author'}
         response = self.app.get('/api/article', query_string=query_string)
@@ -433,7 +434,7 @@ class TestFetchRelation(ManagerTestBase):
         self.session.commit()
 
         self.manager.create_api(self.Person)
-        self.manager.create_api(self.Article, serializer=raise_exception)
+        self.manager.create_api(self.Article, serializer=partial(raise_exception, 'article'))
 
         response = self.app.get('/api/person/1/articles')
         check_sole_error(response, 500, ['Failed to serialize', 'type',
@@ -450,7 +451,7 @@ class TestFetchRelation(ManagerTestBase):
         self.session.add_all([person, article])
         self.session.commit()
 
-        self.manager.create_api(self.Person, serializer=raise_exception)
+        self.manager.create_api(self.Person, serializer=partial(raise_exception, 'person'))
         self.manager.create_api(self.Article)
 
         response = self.app.get('/api/article/1/author')
@@ -468,7 +469,7 @@ class TestFetchRelation(ManagerTestBase):
         self.session.add_all([article, person])
         self.session.commit()
 
-        self.manager.create_api(self.Person, serializer=raise_exception)
+        self.manager.create_api(self.Person, serializer=partial(raise_exception, 'person'))
         self.manager.create_api(self.Article)
 
         params = {'include': 'author'}
@@ -511,7 +512,7 @@ class TestFetchRelatedResource(ManagerTestBase):
         self.session.commit()
 
         self.manager.create_api(self.Person)
-        self.manager.create_api(self.Article, serializer=raise_exception)
+        self.manager.create_api(self.Article, serializer=partial(raise_exception, 'article'))
 
         response = self.app.get('/api/person/1/articles/1')
         check_sole_error(response, 500, ['Failed to serialize', 'type',
@@ -528,7 +529,7 @@ class TestFetchRelatedResource(ManagerTestBase):
         self.session.add_all([article, person])
         self.session.commit()
 
-        self.manager.create_api(self.Person, serializer=raise_exception)
+        self.manager.create_api(self.Person, serializer=partial(raise_exception, 'person'))
         self.manager.create_api(self.Article)
 
         query_string = {'include': 'author'}

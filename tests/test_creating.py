@@ -58,7 +58,7 @@ def raise_s_exception(instance, *args, **kw):
     exceptions.
 
     """
-    raise SerializationException(instance)
+    raise SerializationException(instance=instance, resource_id=instance.id, resource_type='person')
 
 
 def raise_d_exception(*args, **kw):
@@ -533,7 +533,7 @@ class TestCreating(ManagerTestBase):
             }
         }
         query_string = {'include': 'author'}
-        response = self.app.post('/api/article', data=dumps(data),
+        response = self.app.post('/api/article', json=data,
                                  query_string=query_string)
         check_sole_error(response, 500, ['Failed to serialize',
                                          'included resource', 'type', 'person',

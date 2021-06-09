@@ -21,14 +21,11 @@ from sqlalchemy.orm import relationship
 
 from flask_restless import APIManager
 from flask_restless import IllegalArgumentError
-from flask_restless.helpers import collection_name
 from flask_restless.helpers import url_for
-
 
 from .helpers import ManagerTestBase
 from .helpers import SQLAlchemyTestBase
 from .helpers import force_content_type_jsonapi
-from .helpers import loads
 
 
 class TestLocalAPIManager(SQLAlchemyTestBase):
@@ -304,7 +301,6 @@ class TestAPIManager(ManagerTestBase):
         """
         super(TestAPIManager, self).tearDown()
         url_for.created_managers.clear()
-        collection_name.created_managers.clear()
 
     def test_url_for(self):
         """Tests the global :func:`flask_restless.url_for` function."""
@@ -351,7 +347,7 @@ class TestAPIManager(ManagerTestBase):
 
         """
         self.manager.create_api(self.Person, collection_name='people')
-        assert collection_name(self.Person) == 'people'
+        assert self.manager.collection_name(self.Person) == 'people'
 
     def test_collection_name_nonexistent(self):
         """Tests that attempting to get the collection name for an unknown
@@ -359,7 +355,7 @@ class TestAPIManager(ManagerTestBase):
 
         """
         with self.assertRaises(ValueError):
-            collection_name(self.Person)
+            self.manager.collection_name(self.Person)
 
     def test_serializer_for(self):
         """Tests the global :func:`flask_restless.serializer_for`

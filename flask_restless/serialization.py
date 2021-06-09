@@ -32,7 +32,6 @@ from flask import request
 from sqlalchemy import Column
 
 from .helpers import attribute_columns
-from .helpers import collection_name
 from .helpers import foreign_keys
 from .helpers import get_by
 from .helpers import get_related_model
@@ -66,11 +65,13 @@ class SerializationException(Exception):
 
     """
 
-    def __init__(self, instance, message=None, resource=None, *args, **kw):
+    def __init__(self, instance, message=None, resource=None, resource_type=None, resource_id=None, *args, **kw):
         super(SerializationException, self).__init__(*args, **kw)
         self.resource = resource
         self.message = message
         self.instance = instance
+        self.resource_type = resource_type
+        self.resource_id = resource_id
 
 
 class DeserializationException(Exception):
@@ -302,9 +303,10 @@ class Deserializer(object):
 
     """
 
-    def __init__(self, session, model):
+    def __init__(self, session, model, api_manager):
         self.session = session
         self.model = model
+        self.api_manager = api_manager
 
     def __call__(self, document):
         """Creates and returns a new instance of the SQLAlchemy model specified
@@ -513,8 +515,8 @@ class DefaultDeserializer(Deserializer):
 
     """
 
-    def __init__(self, session, model, allow_client_generated_ids=False, **kw):
-        super(DefaultDeserializer, self).__init__(session, model, **kw)
+    def __init__(self, *args, allow_client_generated_ids=False, **kw):
+        super(DefaultDeserializer, self).__init__(*args, **kw)
 
         #: Whether to allow client generated IDs.
         self.allow_client_generated_ids = allow_client_generated_ids
@@ -538,7 +540,7 @@ class DefaultDeserializer(Deserializer):
         if 'id' in data and not self.allow_client_generated_ids:
             raise ClientGeneratedIDNotAllowed
         type_ = data.pop('type')
-        expected_type = collection_name(self.model)
+        expected_type = self.api_manager.collection_name(self.model)
         if type_ != expected_type:
             raise ConflictingType(expected_type, type_)
         # Check for any request parameter naming a column which does not exist
@@ -561,10 +563,9 @@ class DefaultDeserializer(Deserializer):
                     raise MissingData(link_name)
                 linkage = link_object['data']
                 related_model = get_related_model(self.model, link_name)
-                expected_type = collection_name(related_model)
+                expected_type = self.api_manager.collection_name(related_model)
                 # Create the deserializer for this relationship object.
-                DRD = DefaultRelationshipDeserializer
-                deserialize = DRD(self.session, related_model, link_name)
+                deserialize = DefaultRelationshipDeserializer(self.session, related_model, self.api_manager, relation_name=link_name)
                 links[link_name] = deserialize(linkage)
         # TODO Need to check here if any related instances are None,
         # like we do in the patch() method. We could possibly refactor
@@ -609,14 +610,11 @@ class DefaultRelationshipDeserializer(Deserializer):
 
     """
 
-    def __init__(self, session, model, relation_name=None):
-        super(DefaultRelationshipDeserializer, self).__init__(session, model)
-        #: The related model whose objects this deserializer will return
-        #: in the :meth:`__call__` method.
-        self.model = model
+    def __init__(self, *args, relation_name=None):
+        super(DefaultRelationshipDeserializer, self).__init__(*args)
 
         #: The collection name given to the related model.
-        self.type_name = collection_name(self.model)
+        self.type_name = self.api_manager.collection_name(self.model)
 
         #: The name of the relationship being deserialized, as a string.
         self.relation_name = relation_name
@@ -649,8 +647,8 @@ class DefaultRelationshipDeserializer(Deserializer):
                 raise ConflictingType(self.relation_name, self.type_name,
                                       type_)
             id_ = data['id']
-            return get_by(self.session, self.model, id_)
+            primary_key = self.api_manager.primary_key_for(self.model)
+            return get_by(self.session, self.model, id_, primary_key=primary_key)
         # Otherwise, if this is a to-many relationship, recurse on each
         # and return a list of instances.
         return list(map(self, data))
-
