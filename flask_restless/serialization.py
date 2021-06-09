@@ -40,7 +40,6 @@ from .helpers import has_field
 from .helpers import is_like_list
 from .helpers import primary_key_names
 from .helpers import strings_to_datetimes
-from .helpers import url_for
 
 #: Names of columns which should definitely not be considered user columns to
 #: be included in a dictionary representation of a model.
@@ -446,7 +445,7 @@ class FastSerializer(Serializer):
         if ((self._only is None or 'self' in self._only)
                 and (only is None or 'self' in only)):
             instance_id = getattr(instance, self._api_manager.primary_key_for(self._model))
-            path = url_for(self._model, instance_id, _method='GET')
+            path = self._api_manager.url_for(self._model, resource_id=instance_id, _method='GET')
             url = urljoin(request.url_root, path)
             result['links'] = dict(self=url)
 

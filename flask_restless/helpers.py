@@ -404,37 +404,6 @@ class KnowsAPIManagers:
         self.created_managers.add(apimanager)
 
 
-class UrlFinder(KnowsAPIManagers, Singleton):
-    """The singleton class that backs the :func:`url_for` function."""
-
-    def __call__(self, model, resource_id=None, relation_name=None,
-                 related_resource_id=None, _apimanager=None,
-                 relationship=False, **kw):
-        if _apimanager is not None:
-            if model not in _apimanager.created_apis_for:
-                message = ('APIManager {0} has not created an API for model '
-                           ' {1}; maybe another APIManager instance'
-                           ' did?').format(_apimanager, model)
-                raise ValueError(message)
-            return _apimanager.url_for(model, resource_id=resource_id,
-                                       relation_name=relation_name,
-                                       related_resource_id=related_resource_id,
-                                       relationship=relationship, **kw)
-        for manager in self.created_managers:
-            try:
-                return self(model, resource_id=resource_id,
-                            relation_name=relation_name,
-                            related_resource_id=related_resource_id,
-                            relationship=relationship, _apimanager=manager,
-                            **kw)
-            except ValueError:
-                pass
-        message = ('Model {0} is not known to any APIManager'
-                   ' objects; maybe you have not called'
-                   ' APIManager.create_api() for this model.').format(model)
-        raise ValueError(message)
-
-
 class PrimaryKeyFinder(KnowsAPIManagers, Singleton):
     """The singleton class that backs the :func:`primary_key_for` function."""
 
@@ -471,49 +440,6 @@ class PrimaryKeyFinder(KnowsAPIManagers, Singleton):
             primary_key = 'id' if 'id' in pk_names else pk_names[0]
         return primary_key
 
-
-#: Returns the URL for the specified model, similar to :func:`flask.url_for`.
-#:
-#: `model` is a SQLAlchemy model class. This should be a model on which
-#: :meth:`APIManager.create_api_blueprint` (or :meth:`APIManager.create_api`)
-#: has been invoked previously. If no API has been created for it, this
-#: function raises a `ValueError`.
-#:
-#: If `_apimanager` is not ``None``, it must be an instance of
-#: :class:`APIManager`. Restrict our search for endpoints exposing `model` to
-#: only endpoints created by the specified :class:`APIManager` instance.
-#:
-#: The `resource_id`, `relation_name`, and `relationresource_id` keyword
-#: arguments allow you to get the URL for a more specific sub-resource.
-#:
-#: For example, suppose you have a model class ``Person`` and have created the
-#: appropriate Flask application and SQLAlchemy session::
-#:
-#:     >>> manager = APIManager(app, session=session)
-#:     >>> manager.create_api(Person, collection_name='people')
-#:     >>> url_for(Person, resource_id=3)
-#:     'http://example.com/api/people/3'
-#:     >>> url_for(Person, resource_id=3, relation_name=computers)
-#:     'http://example.com/api/people/3/computers'
-#:     >>> url_for(Person, resource_id=3, relation_name=computers, related_resource_id=9)
-#:     'http://example.com/api/people/3/computers/9'
-#:
-#: If a `resource_id` and a `relation_name` are provided, and you wish
-#: to determine the relationship endpoint URL instead of the related
-#: resource URL, set the `relationship` keyword argument to ``True``::
-#:
-#:     >>> url_for(Person, resource_id=3, relation_name=computers, relationshi=True)
-#:     'http://example.com/api/people/3/relatonships/computers'
-#:
-#: The remaining keyword arguments, `kw`, are passed directly on to
-#: :func:`flask.url_for`.
-#:
-#: Since this function creates absolute URLs to resources linked to the given
-#: instance, it must be called within a `Flask request context`_.
-#:
-#:  .. _Flask request context: http://flask.pocoo.org/docs/0.10/reqcontext/
-#:
-url_for = UrlFinder()
 
 #: Returns the primary key to be used for the given model or model instance,
 #: as specified by the ``primary_key`` keyword argument to

@@ -21,7 +21,6 @@ from sqlalchemy.orm import relationship
 
 from flask_restless import APIManager
 from flask_restless import IllegalArgumentError
-from flask_restless.helpers import url_for
 
 from .helpers import ManagerTestBase
 from .helpers import SQLAlchemyTestBase
@@ -239,23 +238,6 @@ class TestLocalAPIManager(SQLAlchemyTestBase):
         response = self.app.get('/foo/article')
         assert response.status_code == 404
 
-    # # This is a possible feature, but we will not support this for now.
-    # def test_append_url_prefix(self):
-    #     """Tests that a call to :meth:`APIManager.create_api` can
-    #     append to the URL prefix provided in the constructor to the
-    #     manager class, if the new URL does not start with a slash.
-
-    #     """
-    #     manager = APIManager(self.flaskapp, session=self.session,
-    #                          url_prefix='/foo')
-    #     manager.create_api(self.Person, url_prefix='bar')
-    #     response = self.app.get('/foo/bar/person')
-    #     assert response.status_code == 200
-    #     response = self.app.get('/foo/person')
-    #     assert response.status_code == 404
-    #     response = self.app.get('/bar/person')
-    #     assert response.status_code == 404
-
 
 class TestAPIManager(ManagerTestBase):
     """Unit tests for the :class:`flask_restless.manager.APIManager` class."""
@@ -291,28 +273,15 @@ class TestAPIManager(ManagerTestBase):
         self.Foo = Foo
         self.Base.metadata.create_all()
 
-    # HACK If we don't include this, there seems to be an issue with the
-    # globally known APIManager objects not being cleared after every test.
-    def tearDown(self):
-        """Clear the :class:`flask_restless.APIManager` objects known by
-        the global functions :data:`model_for`, :data:`url_for`, and
-        :data:`collection_name`.
-
-        """
-        super(TestAPIManager, self).tearDown()
-        url_for.created_managers.clear()
-
     def test_url_for(self):
         """Tests the global :func:`flask_restless.url_for` function."""
         self.manager.create_api(self.Person, collection_name='people')
         self.manager.create_api(self.Article, collection_name='articles')
         with self.flaskapp.test_request_context():
-            url1 = url_for(self.Person)
-            url2 = url_for(self.Person, resource_id=1)
-            url3 = url_for(self.Person, resource_id=1,
-                           relation_name='articles')
-            url4 = url_for(self.Person, resource_id=1,
-                           relation_name='articles', related_resource_id=2)
+            url1 = self.manager.url_for(self.Person)
+            url2 = self.manager.url_for(self.Person, resource_id=1)
+            url3 = self.manager.url_for(self.Person, resource_id=1, relation_name='articles')
+            url4 = self.manager.url_for(self.Person, resource_id=1, relation_name='articles', related_resource_id=2)
             assert url1.endswith('/api/people')
             assert url2.endswith('/api/people/1')
             assert url3.endswith('/api/people/1/articles')
@@ -339,7 +308,7 @@ class TestAPIManager(ManagerTestBase):
 
         """
         with self.assertRaises(ValueError):
-            url_for(self.Person)
+            self.manager.url_for(self.Person)
 
     def test_collection_name(self):
         """Tests the global :func:`flask_restless.collection_name`

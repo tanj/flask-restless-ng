@@ -49,7 +49,6 @@ from ..helpers import get_model
 from ..helpers import is_like_list
 from ..helpers import is_proxy
 from ..helpers import primary_key_value
-from ..helpers import url_for
 from ..search import ComparisonToNull
 from ..search import search
 from ..search import search_relationship
@@ -1538,23 +1537,21 @@ class APIBase(ModelView):
             resource_id = primary_key_value(primary_resource)
             related_resource_id = primary_key_value(resource)
             # `self.model` should match `get_model(primary_resource)`
-            self_link = url_for(self.model, resource_id, relation_name,
-                                related_resource_id)
+            self_link = self.api_manager.url_for(self.model, resource_id=resource_id, relation_name=relation_name, related_resource_id=related_resource_id)
             result['links']['self'] = self_link
         elif is_relation:
             resource_id = primary_key_value(primary_resource)
             # `self.model` should match `get_model(primary_resource)`
             if is_relationship:
-                self_link = url_for(self.model, resource_id, relation_name,
-                                    relationship=True)
-                related_link = url_for(self.model, resource_id, relation_name)
+                self_link = self.api_manager.url_for(self.model, resource_id=resource_id, relation_name=relation_name, relationship=True)
+                related_link = self.api_manager.url_for(self.model, resource_id=resource_id, relation_name=relation_name)
                 result['links']['self'] = self_link
                 result['links']['related'] = related_link
             else:
-                self_link = url_for(self.model, resource_id, relation_name)
+                self_link = self.api_manager.url_for(self.model, resource_id=resource_id, relation_name=relation_name)
                 result['links']['self'] = self_link
         else:
-            result['links']['self'] = url_for(self.model)
+            result['links']['self'] = self.api_manager.url_for(self.model)
 
         # Include any requested resources in a compound document.
         try:
@@ -1564,8 +1561,7 @@ class APIBase(ModelView):
             # guaranteed that each of the underlying exceptions is a
             # `SerializationException`. Thus we can use
             # `errors_from_serialization_exception()`.
-            return errors_from_serialization_exceptions(e.exceptions,
-                                                        included=True)
+            return errors_from_serialization_exceptions(e.exceptions, included=True)
         if included:
             result['included'] = included
         # HACK Need to do this here to avoid a too-long line.
@@ -1597,7 +1593,7 @@ class APIBase(ModelView):
             return error_response(400, cause=exception, detail=detail)
 
         # Prepare the dictionary that will contain the JSON API response.
-        result = {'links': {'self': url_for(self.model)},
+        result = {'links': {'self': self.api_manager.url_for(self.model)},
                   'jsonapi': {'version': JSONAPI_VERSION},
                   'meta': {}}
 

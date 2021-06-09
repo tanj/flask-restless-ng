@@ -24,7 +24,6 @@ from flask import Blueprint
 from .helpers import get_model
 from .helpers import primary_key_for
 from .helpers import primary_key_names
-from .helpers import url_for
 from .serialization import DefaultDeserializer
 from .serialization import FastSerializer
 from .views import API
@@ -146,7 +145,6 @@ class APIManager:
         #
         # TODO This is a bit of poor code style because it requires the
         # APIManager to know about these global functions that use it.
-        url_for.register(self)
         primary_key_for.register(self)
 
         #: A mapping whose keys are models for which this object has
