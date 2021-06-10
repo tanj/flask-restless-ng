@@ -24,7 +24,7 @@ contributions under the Creative Commons Attribution-ShareAlike License version
 
 Using `pip` is probably the easiest way to install this:
 
-    pip install -r requirements-test.txt
+    pip install -r requirements/test.txt
 
 To run the tests:
 
@@ -46,7 +46,7 @@ the documentation:
 These requirements are also listed in the `requirements-doc.txt` file. Using
 `pip` is probably the easiest way to install these:
 
-    pip install -r requirements-doc.txt
+    pip install -r requirements/doc.txt
 
 The documentation is written for Sphinx in [reStructuredText][13] files in the
 `docs/` directory. Documentation for each class and function is provided in the

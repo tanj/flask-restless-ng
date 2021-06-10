@@ -19,7 +19,7 @@ addons:
 before_install:
   # Determine whether we're using PyPy, as it determines which requirements
   # file we will use.
-  - if (python --version 2>&1 | grep PyPy > /dev/null); then export REQUIREMENTS=requirements-test-pypy.txt; else export REQUIREMENTS=requirements-test-cpython.txt; fi
+  - if (python --version 2>&1 | grep PyPy > /dev/null); then export REQUIREMENTS=requirements/test-pypy.txt; else export REQUIREMENTS=requirements/test-cpython.txt; fi
 
 install:
   - pip install --upgrade pip
