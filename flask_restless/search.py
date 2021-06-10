@@ -24,14 +24,11 @@ from sqlalchemy import func
 from sqlalchemy import or_
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm.attributes import InstrumentedAttribute
-from sqlalchemy.sql import false as FALSE
 
 from .exceptions import BadRequest
-from .helpers import get_model
 from .helpers import get_related_association_proxy_model
 from .helpers import get_related_model
 from .helpers import primary_key_names
-from .helpers import primary_key_value
 from .helpers import session_query
 from .helpers import string_to_datetime
 
@@ -353,24 +350,6 @@ def create_filter(model, filt):
     if isinstance(filt, ConjunctionFilter):
         return and_(create_filter(model, f) for f in filt)
     return or_(create_filter(model, f) for f in filt)
-
-
-def search_relationship(session, instance, relation, filters=None, sort=None):
-    model = get_model(instance)
-    related_model = get_related_model(model, relation)
-    query = session_query(session, related_model)
-
-    # Filter by only those related values that are related to `instance`.
-    relationship = getattr(instance, relation)
-    primary_keys = {primary_key_value(inst) for inst in relationship}
-    # If the relationship is empty, we can avoid a potentially expensive
-    # filtering operation by simply returning an intentionally empty
-    # query.
-    if not primary_keys:
-        return query.filter(FALSE())
-    query = query.filter(primary_key_value(related_model).in_(primary_keys))
-
-    return search(session, related_model, filters=filters, sort=sort, _initial_query=query)
 
 
 def search(session, model, filters=None, sort=None, _initial_query=None):

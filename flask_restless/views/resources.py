@@ -24,7 +24,6 @@ from ..helpers import get_by
 from ..helpers import get_related_model
 from ..helpers import has_field
 from ..helpers import is_like_list
-from ..helpers import primary_key_value
 from ..helpers import strings_to_datetimes
 from ..serialization import ClientGeneratedIDNotAllowed
 from ..serialization import ConflictingType
@@ -147,14 +146,14 @@ class API(APIBase):
         resources = getattr(primary_resource, relation_name)
         # Check if one of the related resources has the specified ID. (JSON API
         # expects all IDs to be strings.)
-        primary_keys = (primary_key_value(resource, as_string=True)
+        primary_keys = (self.api_manager.primary_key_value(resource, as_string=True)
                         for resource in resources)
         if not any(k == str(related_resource_id) for k in primary_keys):
             detail = 'No related resource with ID {0}'
             detail = detail.format(related_resource_id)
             return error_response(404, detail=detail)
         # Get the related resource by its ID.
-        resource = get_by(self.session, related_model, related_resource_id)
+        resource = get_by(self.session, related_model, related_resource_id, self.api_manager.primary_key_for(related_model))
         return self._get_resource_helper(resource,
                                          primary_resource=primary_resource,
                                          relation_name=relation_name,
@@ -386,7 +385,7 @@ class API(APIBase):
             return error_response(400, cause=exception, detail=detail)
         # Determine the value of the primary key for this instance and
         # encode URL-encode it (in case it is a Unicode string).
-        primary_key = primary_key_value(instance, as_string=True)
+        primary_key = self.api_manager.primary_key_value(instance, as_string=True)
         # The URL at which a client can access the newly created instance
         # of the model.
         url = '{0}/{1}'.format(request.base_url, primary_key)
@@ -474,7 +473,7 @@ class API(APIBase):
                         detail = detail.format(expected_type, type_)
                         return error_response(409, detail=detail)
                     id_ = rel['id']
-                    inst = get_by(self.session, related_model, id_)
+                    inst = get_by(self.session, related_model, id_, self.api_manager.primary_key_for(related_model))
                     if inst is None:
                         not_found.append((id_, type_))
                     else:
@@ -501,7 +500,7 @@ class API(APIBase):
                         detail = detail.format(expected_type, type_)
                         return error_response(409, detail=detail)
                     id_ = linkage['id']
-                    inst = get_by(self.session, related_model, id_)
+                    inst = get_by(self.session, related_model, id_, self.api_manager.primary_key_for(related_model))
                     # If the to-one relationship resource does not
                     # exist, return an error response.
                     if inst is None:

@@ -40,18 +40,19 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.query import Query
+from sqlalchemy.sql import false as FALSE
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import parse_options_header
 
 from ..exceptions import BadRequest
 from ..exceptions import Error
 from ..helpers import get_model
+from ..helpers import get_related_model
 from ..helpers import is_like_list
 from ..helpers import is_proxy
-from ..helpers import primary_key_value
+from ..helpers import session_query
 from ..search import ComparisonToNull
 from ..search import search
-from ..search import search_relationship
 from ..serialization import DeserializationException
 from ..serialization import SerializationException
 from .helpers import count
@@ -213,8 +214,8 @@ class MultipleExceptions(Exception):
 
     """
 
-    def __init__(self, exceptions, *args, **kw):
-        super(MultipleExceptions, self).__init__(*args, **kw)
+    def __init__(self, exceptions, *args):
+        super(MultipleExceptions, self).__init__(*args)
 
         #: Sequence of other exceptions that have been raised in the code.
         self.exceptions = exceptions
@@ -1534,13 +1535,13 @@ class APIBase(ModelView):
         is_relation = primary_resource is not None
         is_related_resource = is_relation and related_resource
         if is_related_resource:
-            resource_id = primary_key_value(primary_resource)
-            related_resource_id = primary_key_value(resource)
+            resource_id = self.api_manager.primary_key_value(primary_resource)
+            related_resource_id = self.api_manager.primary_key_value(resource)
             # `self.model` should match `get_model(primary_resource)`
             self_link = self.api_manager.url_for(self.model, resource_id=resource_id, relation_name=relation_name, related_resource_id=related_resource_id)
             result['links']['self'] = self_link
         elif is_relation:
-            resource_id = primary_key_value(primary_resource)
+            resource_id = self.api_manager.primary_key_value(primary_resource)
             # `self.model` should match `get_model(primary_resource)`
             if is_relationship:
                 self_link = self.api_manager.url_for(self.model, resource_id=resource_id, relation_name=relation_name, relationship=True)
@@ -1582,8 +1583,22 @@ class APIBase(ModelView):
         # Compute the result of the search on the model.
         is_relation = resource is not None
         if is_relation:
-            search_ = partial(search_relationship, self.session, resource,
-                              relation_name)
+            model = get_model(resource)
+            related_model = get_related_model(model, relation_name)
+            query = session_query(self.session, related_model)
+
+            # Filter by only those related values that are related to `instance`.
+            relationship = getattr(resource, relation_name)
+            primary_keys = {self.api_manager.primary_key_value(inst) for inst in relationship}
+            # If the relationship is empty, we can avoid a potentially expensive
+            # filtering operation by simply returning an intentionally empty
+            # query.
+            if not primary_keys:
+                query = query.filter(FALSE())
+            else:
+                query = query.filter(self.api_manager.primary_key_value(related_model).in_(primary_keys))
+
+            search_ = partial(search, self.session, related_model, _initial_query=query)
         else:
             search_ = partial(search, self.session, self.model)
         try:

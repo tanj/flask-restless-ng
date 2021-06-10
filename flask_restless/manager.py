@@ -20,9 +20,9 @@ from collections import namedtuple
 from uuid import uuid1
 
 from flask import Blueprint
+from werkzeug.urls import url_quote_plus
 
 from .helpers import get_model
-from .helpers import primary_key_for
 from .helpers import primary_key_names
 from .serialization import DefaultDeserializer
 from .serialization import FastSerializer
@@ -139,13 +139,6 @@ class APIManager:
             raise ValueError('`session` can not be empty')
 
         self.app = app
-
-        # Stash this instance so that it can be examined later by the global
-        # `url_for`, and `collection_name` functions.
-        #
-        # TODO This is a bit of poor code style because it requires the
-        # APIManager to know about these global functions that use it.
-        primary_key_for.register(self)
 
         #: A mapping whose keys are models for which this object has
         #: created an API via the :meth:`create_api_blueprint` method
@@ -283,7 +276,7 @@ class APIManager:
         """
         return self.created_apis_for[model].serializer
 
-    def primary_key_for(self, model):
+    def primary_key_for(self, instance_or_model):
         """Returns the primary key for the specified model, as specified
         by the `primary_key` keyword argument to
         :meth:`create_api_blueprint`.
@@ -293,6 +286,12 @@ class APIManager:
         otherwise a :exc:`KeyError` is raised.
 
         """
+        # TODO: refactor to use model only
+        if isinstance(instance_or_model, type):
+            model = instance_or_model
+        else:
+            model = instance_or_model.__class__
+
         return self.created_apis_for[model].primary_key
 
     def url_prefix_for(self, model):
@@ -761,6 +760,26 @@ class APIManager:
             'id': str(getattr(instance, self.primary_key_for(model))),
             'type': self.collection_name(model)
         }
+
+    def primary_key_value(self, instance, as_string=False):
+        """Returns the value of the primary key field of the specified `instance`
+        of a SQLAlchemy model.
+
+        This is a convenience function for::
+
+            getattr(instance, primary_key_name(instance))
+
+        If `as_string` is ``True``, try to coerce the return value to a string.
+
+        """
+
+        result = getattr(instance, self.primary_key_for(instance))
+        if not as_string:
+            return result
+        try:
+            return str(result)
+        except UnicodeEncodeError:
+            return url_quote_plus(result.encode('utf-8'))
 
     def create_api(self, *args, **kw):
         """Creates and possibly registers a ReSTful API blueprint for

@@ -152,7 +152,7 @@ class RelationshipAPI(APIBase):
             if type_ != collection_name:
                 return error_response(409, detail=f'Type must be {collection_name}, not {type_}')
             # Get the new objects to add to the relation.
-            new_value = get_by(self.session, related_model, rel['id'])
+            new_value = get_by(self.session, related_model, rel['id'], self.api_manager.primary_key_for(related_model))
             if new_value is None:
                 detail = ('No object of type {0} found with ID'
                           ' {1}').format(type_, rel['id'])
@@ -246,7 +246,7 @@ class RelationshipAPI(APIBase):
                     if type_ != collection_name:
                         return error_response(409, detail=f'Type must be {collection_name}, not {type_}')
                     id_ = rel['id']
-                    obj = get_by(self.session, related_model, id_)
+                    obj = get_by(self.session, related_model, id_, self.api_manager.primary_key_for(related_model))
                     replacement.append(obj)
             # Otherwise, we assume the client is trying to set a to-one
             # relationship.
@@ -264,7 +264,7 @@ class RelationshipAPI(APIBase):
                 if type_ != collection_name:
                     return error_response(409, detail=f'Type must be {collection_name}, not {type_}')
                 id_ = data['id']
-                replacement = get_by(self.session, related_model, id_)
+                replacement = get_by(self.session, related_model, id_, self.api_manager.primary_key_for(related_model))
             # If the to-one relationship resource or any of the to-many
             # relationship resources do not exist, return an error response.
             if replacement is None:
@@ -347,7 +347,7 @@ class RelationshipAPI(APIBase):
                           ' linkage object with ID {2}')
                 detail = detail.format(related_type, type_, id_)
                 return error_response(409, detail=detail)
-            resource = get_by(self.session, related_model, id_)
+            resource = get_by(self.session, related_model, id_, self.api_manager.primary_key_for(related_model))
             if resource is None:
                 not_found.append((type_, id_))
             else:

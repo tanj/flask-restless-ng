@@ -17,16 +17,6 @@ The API Manager class
 
    .. automethod:: create_api_blueprint
 
-Global helper functions
------------------------
-
-.. autofunction:: collection_name(model, _apimanager=None)
-
-.. autofunction:: serializer_for(model, _apimanager=None)
-
-.. autofunction:: primary_key_for(model, _apimanager=None)
-
-.. autofunction:: url_for(model, instid=None, relationname=None, relationinstid=None, _apimanager=None, **kw)
 
 Serialization helpers
 ---------------------
