@@ -1,7 +1,6 @@
 import flask
-import flask_sqlalchemy
-
 import flask_restless
+import flask_sqlalchemy
 
 # Create the Flask application and the Flask-SQLAlchemy object.
 app = flask.Flask(__name__)
@@ -10,11 +9,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
 db = flask_sqlalchemy.SQLAlchemy(app)
 
 
-# Create your Flask-SQLAlchemy models as usual but with the following
-# restriction: they must have an __init__ method that accepts keyword
-# arguments for all columns (the constructor in
-# flask.ext.sqlalchemy.SQLAlchemy.Model supplies such a method, so you
-# don't need to declare a new one).
 class Person(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Unicode)
@@ -33,7 +27,7 @@ class Article(db.Model):
 db.create_all()
 
 # Create the Flask-Restless API manager.
-manager = flask_restless.APIManager(app, flask_sqlalchemy_db=db)
+manager = flask_restless.APIManager(app, session=db.session)
 
 # Create API endpoints, which will be available at /api/<tablename> by
 # default. Allowed HTTP methods can be specified as well.

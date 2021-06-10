@@ -6,9 +6,10 @@
 
 ## About
 
+This is a Flask extension that creates URL endpoints that satisfy the requirements of the [JSON API][2] specification. 
+It is compatible with models that have been defined using either SQLAlchemy or Flask-SQLAlchemy.
+
 This is a fork of [Flask-Restless](https://github.com/jfinkels/flask-restless) module originally written by Jeffrey Finkelstein.
-Flask-Restless is a great tool to build [JSON API][2] for SQLAlchemy models, but unfortunately is
-no longer maintained and does not support the most recent versions of Flask and SQLAlchemy 
 
 Version `1.0.*` of `Flask-Restless-NG` is fully API compatible with `Flask-Restless` version `1.0.0b1`
 with the following improvements:
@@ -42,6 +43,58 @@ For more information, see the
 [6]: https://pypi.python.org/pypi/Flask-Restless-NG
 [7]: https://github.com/mrevutskyi/flask-restless-ng
 
+## Installing
+
+This application can be used with any Python version 3.6+
+
+    pip install Flask-Restless-NG
+
+## Example ##
+
+```python
+import flask
+import flask_restless
+import flask_sqlalchemy
+
+# Create the Flask application and the Flask-SQLAlchemy object.
+app = flask.Flask(__name__)
+app.config['DEBUG'] = True
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
+db = flask_sqlalchemy.SQLAlchemy(app)
+
+
+class Person(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Unicode)
+    birth_date = db.Column(db.Date)
+
+
+class Article(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.Unicode)
+    published_at = db.Column(db.DateTime)
+    author_id = db.Column(db.Integer, db.ForeignKey('person.id'))
+    author = db.relationship(Person, backref=db.backref('articles', lazy='dynamic'))
+
+
+# Create the database tables.
+db.create_all()
+
+# Create the Flask-Restless API manager.
+manager = flask_restless.APIManager(app, session=db.session)
+
+# Create API endpoints, which will be available at /api/<tablename> by
+# default. Allowed HTTP methods can be specified as well.
+manager.create_api(Person, methods=['GET', 'POST', 'DELETE'])
+manager.create_api(Article, methods=['GET'])
+
+# start the flask loop
+app.run()
+```
+
+More information on how to use this extension is available in the [documentation][5].
+
+
 ## Copyright license ##
 
 The code comprising this program is copyright 2011 Lincoln de Sousa and
@@ -58,137 +111,6 @@ directory.
 The documentation is licensed under the Creative Commons Attribution-ShareAlike
 4.0 license.
 
-## Contents ##
-
-This is a partial listing of the contents of this package.
-
-* `LICENSE.AGPL` - one possible copyright license under which this program is
-  distributed to you (the GNU Affero General Public License version 3)
-* `LICENSE.BSD` - another possible copyright license under which this program
-  is distributed to you (the 3-clause BSD License)
-* `docs/` - the Sphinx documentation for Flask-Restless
-* `examples/` - example applications of Flask-Restless
-* `flask_restless/` - the Python package containing the extension
-* `MANIFEST.in` - indicates files to include when packaging Flask-Restless
-* `README.md` - this file
-* `setup.py` - Python setuptools configuration file for packaging this
-  extension
-* `tests/` - unit tests for Flask-Restless
-
-The `flask_restless` directory is a Python package containing the following
-files and directory:
-
-* `helpers.py` - utility functions, mainly for performing introspection on
-  SQLAlchemy objects
-* `manager.py` - contains the main class that end users will utilize to create
-  ReSTful JSON APIs for their database models
-* `search.py` - functions and classes that facilitate searching the database
-  on requests that require a search
-* `serialization.py` - basic serialization and deserialization for SQLAlchemy
-  models
-* `views/` - the view classes that implement the JSON API interface
-
-## Installing
-
-This application can be used with any Python version 3.6+ 
-
-This application requires the following libraries to be installed:
-
-* [Flask][1] version 1.0 or greater
-* [SQLAlchemy][3] version 1.2 or greater
-* [python-dateutil][8] version strictly greater than 2.2
-* [mimerender][9] version 0.5.2 or greater
-
-These requirements (and some additional optional packages) are also listed in
-the `requirements.txt` file. Using `pip` is probably the easiest way to install
-these:
-
-    pip install -r requirements.txt
-
-[8]: https://labix.org/python-dateutil
-[9]: https://github.com/martinblech/mimerender
-
-## Building as a Python egg ##
-
-This package can be built, installed, etc. as a Python egg using the provided
-`setup.py` script. For more information, run
-
-    python setup.py --help
-
-## How to use ##
-
-For information on how to use this extension, build the documentation here or
-[view it on the Web][5].
-
-## Testing ##
-
-Using `pip` is probably the easiest way to install this:
-
-    pip install -r requirements-test.txt
-
-To run the tests:
-
-    python -m unittest
-
-
-## Building distribution package
-
-    python3 setup.py sdist bdist_wheel
-
-## Building documentation ##
-
-Flask-Restless requires the following program and supporting library to build
-the documentation:
-
-* [Sphinx][11]
-* [sphinxcontrib-httpdomain][12], version 1.1.7 or greater
-
-These requirements are also listed in the `requirements-doc.txt` file. Using
-`pip` is probably the easiest way to install these:
-
-    pip install -r requirements-doc.txt
-
-The documentation is written for Sphinx in [reStructuredText][13] files in the
-`docs/` directory. Documentation for each class and function is provided in the
-docstring in the code.
-
-The documentation uses the Flask Sphinx theme. It is included as a git
-submodule of this project, rooted at `docs/_themes`. To get the themes, do
-
-    git submodule update --init
-
-Now to build the documentation, run the command
-
-    python setup.py build_sphinx
-
-in the top-level directory. The output can be viewed in a web browser by
-opening `build/sphinx/html/index.html`.
-
-[11]: http://sphinx.pocoo.org/
-[12]: https://packages.python.org/sphinxcontrib-httpdomain/
-[13]: https://docutils.sourceforge.net/rst.html
-
-## Contributing ##
-
-Please report any issues on the [GitHub Issue Tracker][14].
-
-To suggest a change to the code or documentation, please create a new pull
-request on GitHub. Contributed code must come with an appropriate unit
-test. Please ensure that your code follows [PEP8][15], by running, for example,
-[flake8][16] before submitting a pull request. Also, please squash multiple
-commits into a single commit in your pull request by [rebasing][17] onto the
-master branch.
-
-By contributing to this project, you are agreeing to license your code
-contributions under both the GNU Affero General Public License, either version
-3 or any later version, and the 3-clause BSD License, and your documentation
-contributions under the Creative Commons Attribution-ShareAlike License version
-4.0, as described in the copyright license section above.
-
-[14]: http://github.com/mrevutskyi/flask-restless-ng/issues
-[15]: https://www.python.org/dev/peps/pep-0008/
-[16]: http://flake8.readthedocs.org/en/latest/
-[17]: https://help.github.com/articles/about-git-rebase/
 
 ## Artwork ##
 
