@@ -817,7 +817,7 @@ class TestProcessors(ManagerTestBase):
         self.manager.create_api(self.Person, preprocessors=preprocessors)
         response = self.app.get('/api/person/0')
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
         person = document['data']
         assert person['id'] == '1'
         assert person['attributes']['name'] == 'foo'

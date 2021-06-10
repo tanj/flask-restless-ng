@@ -170,7 +170,7 @@ class RelationshipAPI(APIBase):
         # Perform any necessary postprocessing.
         for postprocessor in self.postprocessors['POST_RELATIONSHIP']:
             postprocessor()
-        return {}, 204
+        return {}, 204, {}
 
     def patch(self, resource_id, relation_name):
         """Updates to a to-one or to-many relationship.
@@ -290,7 +290,7 @@ class RelationshipAPI(APIBase):
         # Perform any necessary postprocessing.
         for postprocessor in self.postprocessors['PATCH_RELATIONSHIP']:
             postprocessor()
-        return {}, 204
+        return {}, 204, {}
 
     def delete(self, resource_id, relation_name):
         """Deletes resources from a to-many relationship.
@@ -373,4 +373,4 @@ class RelationshipAPI(APIBase):
         if not was_deleted:
             detail = 'There was no instance to delete'
             return error_response(404, detail=detail)
-        return {}, 204
+        return {}, 204, {}

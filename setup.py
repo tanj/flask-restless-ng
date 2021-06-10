@@ -45,7 +45,6 @@ REQUIREMENTS = [
     'flask>=1.0',
     'sqlalchemy>=1.3',
     'python-dateutil>2.2',
-    'mimerender>=0.5.2'
 ]
 
 #: The absolute path to this file.

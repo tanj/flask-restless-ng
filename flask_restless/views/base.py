@@ -25,17 +25,15 @@ from collections import defaultdict
 from functools import partial
 from functools import wraps
 from itertools import chain
+from typing import Tuple
 from urllib.parse import urlparse
 from urllib.parse import urlunparse
 
-from flask import current_app
+from flask import current_app, Response
 from flask import json
-from flask import jsonify
 from flask import request
 from flask.views import MethodView
 from flask.views import View
-from mimerender import FlaskMimeRender
-from mimerender import register_mime
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm import selectinload
@@ -128,9 +126,6 @@ ACCEPT_RE = re.compile(
 #: Keys in a JSON API error object.
 ERROR_FIELDS = ('id_', 'links', 'status', 'code_', 'title', 'detail', 'source',
                 'meta')
-
-# Register the JSON API content type so that mimerender knows to look for it.
-register_mime('jsonapi', (CONTENT_TYPE, ))
 
 
 def collection_parameters():
@@ -407,6 +402,15 @@ def requires_json_api_mimetype(func):
     return new_func
 
 
+def mime_renderer(func):
+
+    @wraps(func)
+    def new_func(*args, **kw):
+        data, status_code, headers = func(*args, **kw)
+        return Response(response=json.dumps(data), status=status_code, mimetype=CONTENT_TYPE, headers=headers)
+    return new_func
+
+
 def catch_integrity_errors(session):
     """Returns a decorator that catches database integrity errors.
 
@@ -461,42 +465,6 @@ def is_conflict(exception):
     """
     exception_string = str(exception)
     return any(s in exception_string for s in CONFLICT_INDICATORS)
-
-
-def jsonpify(*args, **kw):
-    """Returns a JSONP response, with the specified arguments passed directly
-    to :func:`flask.jsonify`.
-
-    The positional and keyword arguments are passed directly to
-    :func:`flask.jsonify`, with the following exceptions.
-
-    If the keyword arguments include the string specified by :data:`_HEADERS`,
-    its value must be a dictionary specifying headers to set before sending the
-    JSONified response to the client. Headers on the response will be
-    overwritten by headers specified in this dictionary.
-
-    If the keyword arguments include the string specified by :data:`_STATUS`,
-    its value must be an integer representing the status code of the response.
-    Otherwise, the status code of the response will be :http:status:`200`.
-
-    """
-    # HACK In order to make the headers and status code available in the
-    # content of the response, we need to send it from the view function to
-    # this jsonpify function via its keyword arguments. This is a limitation of
-    # the mimerender library: it has no way of making the headers and status
-    # code known to the rendering functions.
-    meta = kw.get('meta', {})
-    headers = meta.pop(_HEADERS, {})
-    status_code = meta.pop(_STATUS, 200)
-    response = jsonify(*args, **kw)
-    if 'Content-Type' not in headers:
-        headers['Content-Type'] = CONTENT_TYPE
-    # Set the headers on the HTTP response as well.
-    if headers:
-        for key, value in headers.items():
-            response.headers.set(key, value)
-    response.status_code = status_code
-    return response
 
 
 def parse_sparse_fields(type_=None):
@@ -680,7 +648,7 @@ def error_response(status=400, cause=None, **kw):
     return errors_response(status, [error(**kw)])
 
 
-def errors_response(status, errors):
+def errors_response(status, errors) -> Tuple[dict, int, dict]:
     """Return an error response with multiple errors.
 
     `status` is an integer representing an HTTP status code corresponding to an
@@ -708,7 +676,7 @@ def errors_response(status, errors):
     """
     document = {'errors': errors, 'jsonapi': {'version': JSONAPI_VERSION},
                 'meta': {_STATUS: status}}
-    return document, status
+    return document, status, {}
 
 
 def error_from_serialization_exception(exception, included=False):
@@ -746,17 +714,6 @@ def errors_from_serialization_exceptions(exceptions, included=False):
     _to_error = partial(error_from_serialization_exception, included=included)
     errors = list(map(_to_error, exceptions))
     return errors_response(500, errors)
-
-
-#: Creates the mimerender object necessary for decorating responses with a
-#: function that automatically formats the dictionary in the appropriate format
-#: based on the ``Accept`` header.
-#:
-#: Technical details: the first pair of parentheses instantiates the
-#: :class:`mimerender.FlaskMimeRender` class. The second pair of parentheses
-#: creates the decorator, so that we can simply use the variable ``mimerender``
-#: as a decorator.
-mimerenderer = FlaskMimeRender()(default='jsonapi', jsonapi=jsonpify)
 
 
 class Paginated(object):
@@ -1013,8 +970,7 @@ class ModelView(MethodView):
     #:
     #: This way, the :data:`mimerender` function appears last. It must appear
     #: last so that it can render the returned dictionary.
-    decorators = [requires_json_api_accept, requires_json_api_mimetype,
-                  mimerenderer]
+    decorators = [requires_json_api_accept, requires_json_api_mimetype, mime_renderer]
 
     def __init__(self, session, model, *args, **kw):
         super(ModelView, self).__init__(*args, **kw)
@@ -1025,7 +981,7 @@ class ModelView(MethodView):
 class FetchCollection(View):
     """Processes requests to fetch a resource collection."""
 
-    decorators = [catch_processing_exceptions, requires_json_api_accept, requires_json_api_mimetype, mimerenderer]
+    decorators = [catch_processing_exceptions, requires_json_api_accept, requires_json_api_mimetype, mime_renderer]
 
     def __init__(self, session, model, api_manager, page_size=10, max_page_size=100, preprocessors=None, postprocessors=None, includes=None):
         self.session = session
@@ -1561,7 +1517,7 @@ class APIBase(ModelView):
         processor_type = 'GET_{0}'.format(self.resource_processor_type(**kw))
         for postprocessor in self.postprocessors[processor_type]:
             postprocessor(result=result)
-        return result, 200
+        return result, 200, {}
 
     def _get_collection_helper(self, resource, relation_name, filters=None, sort=None):
         # Compute the result of the search on the model.

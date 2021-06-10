@@ -311,7 +311,7 @@ class API(APIBase):
         if not was_deleted:
             detail = 'There was no instance to delete.'
             return error_response(404, detail=detail)
-        return {}, 204
+        return {}, 204, {}
 
     def post(self):
         """Creates a new resource based on request data.
@@ -572,4 +572,4 @@ class API(APIBase):
         # Perform any necessary postprocessing.
         for postprocessor in self.postprocessors['PATCH_RESOURCE']:
             postprocessor(result=result)
-        return result, status
+        return result, status, {}
