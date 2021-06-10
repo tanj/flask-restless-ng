@@ -129,9 +129,6 @@ ACCEPT_RE = re.compile(
 ERROR_FIELDS = ('id_', 'links', 'status', 'code_', 'title', 'detail', 'source',
                 'meta')
 
-# For the sake of brevity, rename this function.
-chain = chain.from_iterable
-
 # Register the JSON API content type so that mimerender knows to look for it.
 register_mime('jsonapi', (CONTENT_TYPE, ))
 
@@ -1156,7 +1153,7 @@ class FetchCollection(View):
                         break
                     inclusion_tree, instances = stack.pop()
 
-            include_set = set(chain(get_inclusions(inclusion_tree, instances)))
+            include_set = set(chain.from_iterable(get_inclusions(inclusion_tree, instances)))
             include_list = []
             serialization_exceptions = []
             for instance in include_set:
@@ -1402,7 +1399,7 @@ class APIBase(ModelView):
         # one instance. Otherwise, collect the resources to include for
         # each instance in `instances`.
         if isinstance(instance_or_instances, (Query, list)):
-            to_include = set(chain(self.resources_to_include(resource) for resource in instance_or_instances))
+            to_include = set(chain.from_iterable(self.resources_to_include(resource) for resource in instance_or_instances))
         else:
             to_include = self.resources_to_include(instance_or_instances)
         # This may raise MultipleExceptions if there are problems
@@ -1675,5 +1672,4 @@ class APIBase(ModelView):
             toinclude = self.default_includes
         else:
             toinclude = set(toinclude.split(','))
-        return set(chain(resources_from_path(instance, path)
-                         for path in toinclude))
+        return set(chain.from_iterable(resources_from_path(instance, path) for path in toinclude))

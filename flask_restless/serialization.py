@@ -26,6 +26,7 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
+from typing import Optional
 from urllib.parse import urljoin
 
 from flask import request
@@ -165,7 +166,7 @@ class UnknownField(DeserializationException):
     #:
     #: This attribute can only take one of the two values ``'field'`` or
     #: ``'relationship'``.
-    field_type = None
+    field_type: Optional[str] = None
 
     def __init__(self, field, *args, **kw):
         super(UnknownField, self).__init__(*args, **kw)
@@ -204,7 +205,7 @@ class MissingInformation(DeserializationException):
     #: The name of the key in the dictionary that is missing.
     #:
     #: Subclasses must set this class attribute.
-    element = None
+    element: Optional[str] = None
 
     def __init__(self, relation_name=None, *args, **kw):
         super(MissingInformation, self).__init__(*args, **kw)
