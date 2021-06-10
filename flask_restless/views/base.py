@@ -643,7 +643,6 @@ def extract_error_messages(exception):
     if hasattr(exception, 'invalid_instances'):
         # TODO handle more than once instance
         return exception.invalid_instances[0].validation_errors
-    return None
 
 
 def error(id_=None, links=None, status=None, code=None, title=None,
@@ -1325,8 +1324,7 @@ class APIBase(ModelView):
         self.session.rollback()
         errors = extract_error_messages(exception)
         if not errors:
-            title = 'Validation error'
-            return error_response(400, cause=exception, title=title)
+            return error_response(400, cause=exception, title='Validation error')
         if isinstance(errors, dict):
             errors = [error(title='Validation error', status=400,
                             detail='{0}: {1}'.format(field, detail))
@@ -1363,26 +1361,18 @@ class APIBase(ModelView):
                 # is no serializer, use the default serializer for the
                 # current resource, even though the current model may
                 # different from the model of the current instance.
+                serialize = self.api_manager.serializer_for(model)
+                # This may raise ValueError
+                _type = self.api_manager.collection_name(model)
+                # TODO The `only` keyword argument will be ignored when
+                # serializing relationships, so we don't really need to
+                # recompute this every time.
+                only = self.sparse_fields.get(_type)
                 try:
-                    serialize = self.api_manager.serializer_for(model)
-                except ValueError:
-                    # TODO Should we fail instead, thereby effectively
-                    # requiring that an API has been created for each
-                    # type of resource? This is mainly a design
-                    # question.
-                    pass
-                else:
-                    # This may raise ValueError
-                    _type = self.api_manager.collection_name(model)
-                    # TODO The `only` keyword argument will be ignored when
-                    # serializing relationships, so we don't really need to
-                    # recompute this every time.
-                    only = self.sparse_fields.get(_type)
-                    try:
-                        serialized = serialize(instance, only=only)
-                        result.append(serialized)
-                    except SerializationException as exception:
-                        failed.append(exception)
+                    serialized = serialize(instance, only=only)
+                    result.append(serialized)
+                except SerializationException as exception:
+                    failed.append(exception)
         if failed:
             raise MultipleExceptions(failed)
         return result
@@ -1576,31 +1566,25 @@ class APIBase(ModelView):
             postprocessor(result=result)
         return result, 200
 
-    def _get_collection_helper(self, resource=None, relation_name=None, filters=None, sort=None):
-        if (resource is None) ^ (relation_name is None):
-            raise ValueError('resource and relation must be both None or both'
-                             ' not None')
+    def _get_collection_helper(self, resource, relation_name, filters=None, sort=None):
         # Compute the result of the search on the model.
         is_relation = resource is not None
-        if is_relation:
-            model = get_model(resource)
-            related_model = get_related_model(model, relation_name)
-            query = session_query(self.session, related_model)
+        model = get_model(resource)
+        related_model = get_related_model(model, relation_name)
+        query = session_query(self.session, related_model)
 
-            # Filter by only those related values that are related to `instance`.
-            relationship = getattr(resource, relation_name)
-            primary_keys = {self.api_manager.primary_key_value(inst) for inst in relationship}
-            # If the relationship is empty, we can avoid a potentially expensive
-            # filtering operation by simply returning an intentionally empty
-            # query.
-            if not primary_keys:
-                query = query.filter(FALSE())
-            else:
-                query = query.filter(self.api_manager.primary_key_value(related_model).in_(primary_keys))
-
-            search_ = partial(search, self.session, related_model, _initial_query=query)
+        # Filter by only those related values that are related to `instance`.
+        relationship = getattr(resource, relation_name)
+        primary_keys = {self.api_manager.primary_key_value(inst) for inst in relationship}
+        # If the relationship is empty, we can avoid a potentially expensive
+        # filtering operation by simply returning an intentionally empty
+        # query.
+        if not primary_keys:
+            query = query.filter(FALSE())
         else:
-            search_ = partial(search, self.session, self.model)
+            query = query.filter(self.api_manager.primary_key_value(related_model).in_(primary_keys))
+
+        search_ = partial(search, self.session, related_model, _initial_query=query)
         try:
             search_items = search_(filters=filters, sort=sort)
         except ComparisonToNull as exception:

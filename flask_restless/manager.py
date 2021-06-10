@@ -27,7 +27,6 @@ from .helpers import primary_key_names
 from .serialization import DefaultDeserializer
 from .serialization import FastSerializer
 from .views import API
-from .views import FunctionAPI
 from .views import RelationshipAPI
 from .views.base import FetchCollection
 
@@ -175,37 +174,6 @@ class APIManager:
 
         """
         return APIManager.APINAME_FORMAT.format(collection_name)
-
-    def model_for(self, collection_name):
-        """Returns the SQLAlchemy model class whose type is given by the
-        specified collection name.
-
-        `collection_name` is a string containing the collection name as
-        provided to the ``collection_name`` keyword argument to
-        :meth:`create_api_blueprint`.
-
-        The collection name should correspond to a model on which
-        :meth:`create_api_blueprint` has been invoked previously. If it doesn't
-        this method raises :exc:`ValueError`.
-
-        This method is the inverse of :meth:`collection_name`::
-
-            >>> from mymodels import Person
-            >>> manager.create_api(Person, collection_name='people')
-            >>> manager.collection_name(manager.model_for('people'))
-            'people'
-            >>> manager.model_for(manager.collection_name(Person))
-            <class 'mymodels.Person'>
-
-        """
-        # Reverse the dictionary.
-        models = {info.collection_name: model for model, info in self.created_apis_for.items()}
-        try:
-            return models[collection_name]
-        except KeyError:
-            raise ValueError('Collection name {0} unknown. Be sure to set the'
-                             ' `collection_name` keyword argument when calling'
-                             ' `create_api()`.'.format(collection_name))
 
     def url_for(self, model, **kw) -> str:
         """Returns the URL for the specified model, similar to
@@ -365,7 +333,7 @@ class APIManager:
 
     def create_api_blueprint(self, name, model, methods=READONLY_METHODS,
                              url_prefix=None, collection_name=None,
-                             allow_functions=False, only=None, exclude=None,
+                             only=None, exclude=None,
                              additional_attributes=None,
                              validation_exceptions=None, page_size=10,
                              max_page_size=100, preprocessors=None,
@@ -458,17 +426,6 @@ class APIManager:
         model will be used. For example, if this is set to ``'foo'``,
         then this method creates endpoints of the form ``/api/foo``,
         ``/api/foo/<id>``, etc.
-
-        If `allow_functions` is ``True``, then :http:method:`get`
-        requests to ``/api/eval/<collection_name>`` will return the
-        result of evaluating SQL functions specified in the body of the
-        request. For information on the request format, see
-        :ref:`functionevaluation`. This is ``False`` by default.
-
-        .. warning::
-
-           If ``allow_functions`` is ``True``, you must not create an
-           API for a model whose name is ``'eval'``.
 
         If `only` is not ``None``, it must be a list of columns and/or
         relationships of the specified `model`, given either as strings or as
@@ -736,17 +693,6 @@ class APIManager:
         to_many_resource_methods = READONLY_METHODS & methods
         add_rule(to_many_resource_url, view_func=api_view,
                  methods=to_many_resource_methods)
-
-        # if function evaluation is allowed, add an endpoint at /api/eval/...
-        # which responds only to GET requests and responds with the result of
-        # evaluating functions on all instances of the specified model
-        if allow_functions:
-            eval_api_name = f'{apiname}_eval'
-            eval_api_view = FunctionAPI.as_view(eval_api_name, session, model)
-            eval_endpoint = '/eval{0}'.format(collection_url)
-            eval_methods = ['GET']
-            blueprint.add_url_rule(eval_endpoint, methods=eval_methods,
-                                   view_func=eval_api_view)
 
         # Finally, record that this APIManager instance has created an API for
         # the specified model.

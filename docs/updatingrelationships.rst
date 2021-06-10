@@ -24,7 +24,7 @@ following code on the server::
         author = db.relationship(Person, backref=db.backref('articles'))
 
     db.create_all()
-    manager = APIManager(app, flask_sqlalchemy_db=db)
+    manager = APIManager(app, session=db.session)
     manager.create_api(Person, methods=['PATCH'])
     manager.create_api(Article)
 

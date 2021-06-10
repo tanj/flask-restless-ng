@@ -133,7 +133,6 @@ def get_related_association_proxy_model(attr):
     for attribute in ('mapper', 'parent'):
         if hasattr(prop, attribute):
             return getattr(prop, attribute).class_
-    return None
 
 
 def foreign_key_columns(model):
@@ -229,19 +228,6 @@ def is_like_list(instance, relation):
         if isinstance(local_prop, RelProperty):
             return local_prop.uselist
     return False
-
-
-def is_mapped_class(cls):
-    """Returns ``True`` if and only if the specified SQLAlchemy model class is
-    a mapped class.
-
-    """
-    try:
-        sqlalchemy_inspect(cls)
-    except NoInspectionAvailable:
-        return False
-    else:
-        return True
 
 
 def query_by_primary_key(session, model, pk_value, primary_key=None):

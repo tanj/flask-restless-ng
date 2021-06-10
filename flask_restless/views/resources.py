@@ -254,31 +254,6 @@ class API(APIBase):
             return error_response(404, detail=detail)
         return self._get_resource_helper(resource)
 
-    def _get_collection(self):
-        """Returns a response containing a collection of resources of the type
-        specified by the ``model`` argument to the constructor of this class.
-
-        For example, a request like::
-
-            GET /people
-
-        will fetch a collection of people resources.
-
-        In general, this method is called on requests of the form::
-
-            GET /<collection_name>
-
-        Filtering, sorting, grouping, and pagination are applied to the
-        response in this method.
-
-        """
-        filters, sort = collection_parameters()
-
-        for preprocessor in self.preprocessors['GET_COLLECTION']:
-            preprocessor(filters=filters, sort=sort)
-
-        return self._get_collection_helper(filters=filters, sort=sort)
-
     def get(self, resource_id, relation_name, related_resource_id):
         """Returns the JSON document representing a resource or a collection of
         resources.
@@ -305,14 +280,11 @@ class API(APIBase):
         format specified by the JSON API specification.
 
         """
-        if resource_id is None:
-            return self._get_collection()
         if relation_name is None:
             return self._get_resource(resource_id)
         if related_resource_id is None:
             return self._get_relation(resource_id, relation_name)
-        return self._get_related_resource(resource_id, relation_name,
-                                          related_resource_id)
+        return self._get_related_resource(resource_id, relation_name, related_resource_id)
 
     def delete(self, resource_id):
         """Deletes the resource with the specified ID.
@@ -326,7 +298,6 @@ class API(APIBase):
             # See the note under the preprocessor in the get() method.
             if temp_result is not None:
                 resource_id = temp_result
-        was_deleted = False
         instance = get_by(self.session, self.model, resource_id,
                           self.primary_key)
         if instance is None:

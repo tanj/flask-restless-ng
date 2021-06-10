@@ -1,8 +1,9 @@
 # Copyright 2011 Lincoln de Sousa <lincoln@comum.org>.
 # Copyright 2012, 2013, 2014, 2015, 2016 Jeffrey Finkelstein
 #           <jeffrey.finkelstein@gmail.com> and contributors.
+# Copyright 2020, 2021 Maksym Revutskyi <maksym.revutskyi@gmail.com> and contributors.
 #
-# This file is part of Flask-Restless.
+# This file is part of Flask-Restless-NG.
 #
 # Flask-Restless is distributed under both the GNU Affero General Public
 # License version 3 and under the 3-clause BSD license. For more
@@ -15,8 +16,8 @@ SQLAlchemy models via the JSON API protocol.
 __version__ = '2.0.0b'
 
 
-# The following names are available as part of the public API for
-# Flask-Restless. End users of this package can import these names by doing
+# The following names are available as part of the public API for Flask-Restless-NG.
+# End users of this package can import these names by doing
 # ``from flask_restless import APIManager``, for example.
 from .manager import APIManager  # noqa
 from .manager import IllegalArgumentError  # noqa

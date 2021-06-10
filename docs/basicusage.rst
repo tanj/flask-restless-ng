@@ -69,9 +69,9 @@ If you are using pure SQLAlchemy::
 Second, instantiate an :class:`APIManager` object with the
 :class:`~flask.Flask` and :class:`~flask.ext.sqlalchemy.SQLAlchemy` objects::
 
-    from flask.ext.restless import APIManager
+    from flask_restless import APIManager
 
-    manager = APIManager(app, flask_sqlalchemy_db=db)
+    manager = APIManager(app, session=db.session)
 
 Or if you are using pure SQLAlchemy, specify the session you created above
 instead::

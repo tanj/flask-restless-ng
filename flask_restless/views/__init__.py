@@ -3,8 +3,9 @@
 # Copyright 2011 Lincoln de Sousa <lincoln@comum.org>.
 # Copyright 2012, 2013, 2014, 2015, 2016 Jeffrey Finkelstein
 #           <jeffrey.finkelstein@gmail.com> and contributors.
+# Copyright 2020, 2021 Maksym Revutskyi <maksym.revutskyi@gmail.com>
 #
-# This file is part of Flask-Restless.
+# This file is part of Flask-Restless-NG.
 #
 # Flask-Restless is distributed under both the GNU Affero General Public
 # License version 3 and under the 3-clause BSD license. For more
@@ -17,16 +18,7 @@ The classes :class:`API`, :class:`FunctionAPI`, and
 that do most of the work.
 
 """
-from .base import CONTENT_TYPE
-from .base import ProcessingException
-from .function import FunctionAPI
-from .relationships import RelationshipAPI
-from .resources import API
-
-__all__ = [
-    CONTENT_TYPE,
-    ProcessingException,
-    API,
-    RelationshipAPI,
-    FunctionAPI,
-]
+from .base import CONTENT_TYPE  # noqa
+from .base import ProcessingException  # noqa
+from .relationships import RelationshipAPI  # noqa
+from .resources import API  # noqa

@@ -18,7 +18,7 @@ following code on the server::
         id = db.Column(db.Integer, primary_key=True)
 
     db.create_all()
-    manager = APIManager(app, flask_sqlalchemy_db=db)
+    manager = APIManager(app, session=db.session)
     manager.create_api(Person, method=['DELETE'])
 
 To delete a resource, the request

@@ -19,7 +19,7 @@ following code on the server::
         name = db.Column(db.Unicode)
 
     db.create_all()
-    manager = APIManager(app, flask_sqlalchemy_db=db)
+    manager = APIManager(app, session=db.session)
     manager.create_api(Person, methods=['POST'])
 
 To create a new resource, the request
