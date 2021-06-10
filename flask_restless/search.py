@@ -36,7 +36,7 @@ try:
     # SQLAlchemy 1.3+
     from sqlalchemy.ext.associationproxy import ObjectAssociationProxyInstance as AssociationProxy
 except ImportError:
-    from sqlalchemy.ext.associationproxy import AssociationProxy
+    from sqlalchemy.ext.associationproxy import AssociationProxy  # type: ignore
 
 
 class ComparisonToNull(Exception):

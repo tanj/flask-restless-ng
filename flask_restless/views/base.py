@@ -29,7 +29,8 @@ from typing import Tuple
 from urllib.parse import urlparse
 from urllib.parse import urlunparse
 
-from flask import current_app, Response
+from flask import Response
+from flask import current_app
 from flask import json
 from flask import request
 from flask.views import MethodView
@@ -55,14 +56,6 @@ from ..serialization import DeserializationException
 from ..serialization import SerializationException
 from .helpers import count
 from .helpers import upper_keys as upper
-
-#: String used internally as a dictionary key for passing header information
-#: from view functions to the :func:`jsonpify` function.
-_HEADERS = '__restless_headers'
-
-#: String used internally as a dictionary key for passing status code
-#: information from view functions to the :func:`jsonpify` function.
-_STATUS = '__restless_status_code'
 
 #: The Content-Type we expect for most requests to APIs.
 #:
@@ -674,8 +667,7 @@ def errors_response(status, errors) -> Tuple[dict, int, dict]:
     .. _Errors: http://jsonapi.org/format/#errors
 
     """
-    document = {'errors': errors, 'jsonapi': {'version': JSONAPI_VERSION},
-                'meta': {_STATUS: status}}
+    document = {'errors': errors, 'jsonapi': {'version': JSONAPI_VERSION}}
     return document, status, {}
 
 
@@ -1519,7 +1511,7 @@ class APIBase(ModelView):
             postprocessor(result=result)
         return result, 200, {}
 
-    def _get_collection_helper(self, resource, relation_name, filters=None, sort=None):
+    def _get_collection_helper(self, resource, relation_name, filters=None, sort=None) -> Tuple[dict, int, dict]:
         # Compute the result of the search on the model.
         is_relation = resource is not None
         model = get_model(resource)
@@ -1545,9 +1537,11 @@ class APIBase(ModelView):
             return error_response(400, cause=exception, detail=detail)
 
         # Prepare the dictionary that will contain the JSON API response.
-        result = {'links': {'self': self.api_manager.url_for(self.model)},
-                  'jsonapi': {'version': JSONAPI_VERSION},
-                  'meta': {}}
+        result = {
+            'jsonapi': {'version': JSONAPI_VERSION},
+        }
+        meta = {}
+        links = {'self': self.api_manager.url_for(self.model)}
 
         # Add the primary data (and any necessary links) to the JSON API
         # response object.
@@ -1564,10 +1558,13 @@ class APIBase(ModelView):
         # Wrap the resulting object or list of objects under a `data` key.
         result['data'] = paginated.items
         # Provide top-level links.
-        result['links'].update(paginated.pagination_links)
+        links.update(paginated.pagination_links)
+        result['links'] = links
         link_header = ','.join(paginated.header_links)
         headers = dict(Link=link_header)
-        num_results = paginated.num_results
+        # Add the metadata to the JSON API response object.
+        meta['total'] = paginated.num_results
+        result['meta'] = meta
 
         # Determine the resources to include (in a compound document).
         if self.use_resource_identifiers():
@@ -1592,17 +1589,7 @@ class APIBase(ModelView):
         processor_type = self.collection_processor_type(is_relation=is_relation)
         for postprocessor in self.postprocessors[f'GET_{processor_type}']:
             postprocessor(result=result, filters=filters, sort=sort)
-        # Add the metadata to the JSON API response object.
-        #
-        # HACK Provide the headers directly in the result dictionary, so that
-        # the :func:`jsonpify` function has access to them. See the note there
-        # for more information. They don't really need to be under the ``meta``
-        # key, that's just for semantic consistency.
-        status = 200
-        result['meta'][_HEADERS] = headers
-        result['meta'][_STATUS] = status
-        result['meta']['total'] = num_results
-        return result, status, headers
+        return result, 200, headers
 
     def resources_to_include(self, instance):
         """Returns a set of resources to include in a compound document

@@ -35,9 +35,9 @@ from sqlalchemy.sql.expression import ColumnElement
 
 try:
     # SQLAlchemy 1.3+
-    from sqlalchemy.ext.associationproxy import ObjectAssociationProxyInstance as AssociationProxy
+    from sqlalchemy.ext.associationproxy import ObjectAssociationProxyInstance as AssociationProxyType
 except ImportError:
-    from sqlalchemy.ext.associationproxy import AssociationProxy
+    from sqlalchemy.ext.associationproxy import AssociationProxy as AssociationProxyType  # type: ignore
 
 #: Names of attributes which should definitely not be considered relations when
 #: dynamically computing a list of relations of a SQLAlchemy model.
@@ -117,7 +117,7 @@ def get_related_model(model, relationname):
         if hasattr(attr, 'property') \
                 and isinstance(attr.property, RelProperty):
             return attr.property.mapper.class_
-        if isinstance(attr, AssociationProxy):
+        if isinstance(attr, AssociationProxyType):
             return get_related_association_proxy_model(attr)
     return None
 
@@ -174,7 +174,7 @@ def get_field_type(model, fieldname):
     field = getattr(model, fieldname)
     if isinstance(field, ColumnElement):
         return field.type
-    if isinstance(field, AssociationProxy):
+    if isinstance(field, AssociationProxyType):
         field = field.remote_attr
     if hasattr(field, 'property'):
         prop = field.property
@@ -205,7 +205,7 @@ def primary_key_names(model):
 
 
 def is_proxy(value: Any) -> bool:
-    return isinstance(value, AssociationProxy)
+    return isinstance(value, AssociationProxyType)
 
 
 def is_like_list(instance, relation):
