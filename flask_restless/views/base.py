@@ -756,7 +756,7 @@ def errors_from_serialization_exceptions(exceptions, included=False):
 #: :class:`mimerender.FlaskMimeRender` class. The second pair of parentheses
 #: creates the decorator, so that we can simply use the variable ``mimerender``
 #: as a decorator.
-mimerender = FlaskMimeRender()(default='jsonapi', jsonapi=jsonpify)
+mimerenderer = FlaskMimeRender()(default='jsonapi', jsonapi=jsonpify)
 
 
 class Paginated(object):
@@ -1014,7 +1014,7 @@ class ModelView(MethodView):
     #: This way, the :data:`mimerender` function appears last. It must appear
     #: last so that it can render the returned dictionary.
     decorators = [requires_json_api_accept, requires_json_api_mimetype,
-                  mimerender]
+                  mimerenderer]
 
     def __init__(self, session, model, *args, **kw):
         super(ModelView, self).__init__(*args, **kw)
@@ -1025,7 +1025,7 @@ class ModelView(MethodView):
 class FetchCollection(View):
     """Processes requests to fetch a resource collection."""
 
-    decorators = [catch_processing_exceptions, requires_json_api_accept, requires_json_api_mimetype, mimerender]
+    decorators = [catch_processing_exceptions, requires_json_api_accept, requires_json_api_mimetype, mimerenderer]
 
     def __init__(self, session, model, api_manager, page_size=10, max_page_size=100, preprocessors=None, postprocessors=None, includes=None):
         self.session = session

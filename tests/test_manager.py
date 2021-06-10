@@ -359,15 +359,6 @@ class TestAPIManager(ManagerTestBase):
         with self.assertRaises(IllegalArgumentError):
             self.manager.create_api(self.Person, collection_name='')
 
-    def test_disallow_functions(self):
-        """Tests that if the ``allow_functions`` keyword argument is ``False``,
-        no endpoint will be made available at :http:get:`/api/eval/:type`.
-
-        """
-        self.manager.create_api(self.Person, allow_functions=False)
-        response = self.app.get('/api/eval/person')
-        assert response.status_code == 404
-
     def test_only_and_exclude(self):
         """Tests that attempting to use both ``only`` and ``exclude``
         keyword arguments yields an error.
