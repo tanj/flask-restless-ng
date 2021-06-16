@@ -26,7 +26,6 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
 from ..helpers import ManagerTestBase
-from ..helpers import loads
 from ..helpers import validate_schema
 
 
@@ -131,7 +130,8 @@ class TestFetchingData(ManagerTestBase):
         self.session.commit()
         response = self.app.get('/api/article/1/author')
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         author = document['data']
         assert author['type'] == 'person'
         assert author['id'] == '1'
@@ -147,7 +147,8 @@ class TestFetchingData(ManagerTestBase):
         """
         response = self.app.get('/api/person')
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         people = document['data']
         assert people == []
 
@@ -172,7 +173,8 @@ class TestFetchingData(ManagerTestBase):
         self.session.commit()
         response = self.app.get('/api/person/1/articles')
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         articles = document['data']
         assert ['1', '2'] == sorted(article['id'] for article in articles)
         assert all(article['type'] == 'article' for article in articles)
@@ -200,7 +202,8 @@ class TestFetchingData(ManagerTestBase):
         self.session.commit()
         response = self.app.get('/api/article/1/author')
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         author = document['data']
         assert author['id'] == '1'
         assert author['type'] == 'person'
@@ -222,7 +225,8 @@ class TestFetchingData(ManagerTestBase):
         self.session.commit()
         response = self.app.get('/api/person/1/articles')
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         articles = document['data']
         assert articles == []
 
@@ -241,7 +245,8 @@ class TestFetchingData(ManagerTestBase):
         self.session.commit()
         response = self.app.get('/api/article/1/author')
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         author = document['data']
         assert author is None
 
@@ -291,7 +296,8 @@ class TestFetchingData(ManagerTestBase):
         self.session.commit()
         response = self.app.get('/api/article/1/relationships/comments')
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         comments = document['data']
         assert all(['id', 'type'] == sorted(comment) for comment in comments)
         assert ['1', '2'] == sorted(comment['id'] for comment in comments)
@@ -311,7 +317,8 @@ class TestFetchingData(ManagerTestBase):
         self.session.commit()
         response = self.app.get('/api/article/1/relationships/comments')
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         comments = document['data']
         assert comments == []
 
@@ -334,7 +341,8 @@ class TestFetchingData(ManagerTestBase):
         self.session.commit()
         response = self.app.get('/api/article/1/relationships/author')
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         person = document['data']
         assert ['id', 'type'] == sorted(person)
         assert person['id'] == '1'
@@ -354,7 +362,8 @@ class TestFetchingData(ManagerTestBase):
         self.session.commit()
         response = self.app.get('/api/article/1/relationships/author')
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         person = document['data']
         assert person is None
 
@@ -371,7 +380,8 @@ class TestFetchingData(ManagerTestBase):
         self.session.add(article)
         self.session.commit()
         response = self.app.get('/api/article/1/relationships/author')
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         links = document['links']
         assert links['self'].endswith('/article/1/relationships/author')
         assert links['related'].endswith('/article/1/author')
@@ -434,7 +444,8 @@ class TestInclusion(ManagerTestBase):
         # By default, no links will be included at the top level of the
         # document.
         response = self.app.get('/api/person/1')
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         person = document['data']
         articles = person['relationships']['articles']['data']
         assert ['1'] == sorted(article['id'] for article in articles)
@@ -461,6 +472,7 @@ class TestInclusion(ManagerTestBase):
         # documents.
         response = self.app.get('/api2/person/1')
         document = response.json
+        validate_schema(document)
         person = document['data']
         linked = document['included']
         articles = person['relationships']['articles']['data']
@@ -489,7 +501,8 @@ class TestInclusion(ManagerTestBase):
         query_string = dict(include='articles')
         response = self.app.get('/api/person/1', query_string=query_string)
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         linked = document['included']
         # If a client supplied an include request parameter, no other types of
         # objects should be included.
@@ -527,7 +540,8 @@ class TestInclusion(ManagerTestBase):
         query_string = dict(include='articles,comments')
         response = self.app.get('/api/person/1', query_string=query_string)
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         # Sort the linked objects by type; 'article' comes before 'comment'
         # lexicographically.
         linked = sorted(document['included'], key=lambda x: x['type'])
@@ -560,7 +574,8 @@ class TestInclusion(ManagerTestBase):
         self.session.commit()
         query_string = dict(include='comments.author')
         response = self.app.get('/api/article/1', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         authors = [resource for resource in document['included']
                    if resource['type'] == 'person']
         assert ['1', '2'] == sorted(author['id'] for author in authors)
@@ -573,6 +588,7 @@ class TestInclusion(ManagerTestBase):
         self.session.commit()
         response = self.app.get('/api/article/1', query_string=dict(include='comments.author'))
         document = response.json
+        validate_schema(document)
         assert len(document['included']) == 1
 
     def test_include_relationship_of_none(self):
@@ -604,7 +620,8 @@ class TestInclusion(ManagerTestBase):
         self.session.commit()
         query_string = dict(include='comments.author')
         response = self.app.get('/api/article/1', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         linked = document['included']
         # The included resources should be the two comments and the two
         # authors of those comments.
@@ -644,7 +661,8 @@ class TestInclusion(ManagerTestBase):
         # This differs from the previous test because the primary data
         # is a collection of relationship objects instead of a
         # collection of resource objects.
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         links = document['data']
         assert all(sorted(link) == ['id', 'type'] for link in links)
         included = document['included']
@@ -680,7 +698,8 @@ class TestInclusion(ManagerTestBase):
                                 includes=['articles'])
         query_string = dict(include='comments')
         response = self.app.get('/api2/person/1', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         included = document['included']
         assert ['3'] == sorted(obj['id'] for obj in included)
         assert ['comment'] == sorted(obj['type'] for obj in included)
@@ -733,6 +752,7 @@ class TestSparseFieldsets(ManagerTestBase):
         query_string = {'fields[person]': 'id,name'}
         response = self.app.get('/api/person/1', query_string=query_string)
         document = response.json
+        validate_schema(document)
         person = document['data']
         # ID and type must always be included.
         assert ['attributes', 'id', 'type'] == sorted(person)
@@ -754,7 +774,8 @@ class TestSparseFieldsets(ManagerTestBase):
         self.session.commit()
         query_string = {'fields[person]': 'id'}
         response = self.app.get('/api/person/1', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         person = document['data']
         # ID and type must always be included.
         assert ['id', 'type'] == sorted(person)
@@ -775,7 +796,8 @@ class TestSparseFieldsets(ManagerTestBase):
         self.session.commit()
         query_string = {'fields[person]': 'id,name'}
         response = self.app.get('/api/person', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         people = document['data']
         assert all(['attributes', 'id', 'type'] == sorted(p) for p in people)
         assert all(['name'] == sorted(p['attributes']) for p in people)
@@ -801,6 +823,7 @@ class TestSparseFieldsets(ManagerTestBase):
                         'fields[article]': 'id'}
         response = self.app.get('/api/person/1', query_string=query_string)
         document = response.json
+        validate_schema(document)
         person = document['data']
         linked = document['included']
         # We requested 'id', 'name', and 'articles'; 'id' and 'type' must
@@ -861,7 +884,8 @@ class TestSorting(ManagerTestBase):
         self.session.commit()
         query_string = {'sort': 'age'}
         response = self.app.get('/api/person', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         people = document['data']
         age1, age2, age3 = (p['attributes']['age'] for p in people)
         assert age1 <= age2 <= age3
@@ -883,7 +907,8 @@ class TestSorting(ManagerTestBase):
         self.session.commit()
         query_string = {'sort': '-age'}
         response = self.app.get('/api/person', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         people = document['data']
         age1, age2, age3 = (p['attributes']['age'] for p in people)
         assert age1 >= age2 >= age3
@@ -906,7 +931,8 @@ class TestSorting(ManagerTestBase):
         # Sort by age, decreasing, then by name, increasing.
         query_string = {'sort': '-age,name'}
         response = self.app.get('/api/person', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         people = document['data']
         p1, p2, p3, p4 = (p['attributes'] for p in people)
         assert p1['age'] == p2['age'] >= p3['age'] == p4['age']
@@ -933,7 +959,8 @@ class TestSorting(ManagerTestBase):
         self.session.commit()
         query_string = {'sort': 'author.age'}
         response = self.app.get('/api/article', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         articles = document['data']
         assert ['2', '1', '3'] == [c['id'] for c in articles]
 
@@ -958,7 +985,8 @@ class TestSorting(ManagerTestBase):
         self.session.commit()
         query_string = {'sort': 'author.age,author.name'}
         response = self.app.get('/api/article', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         articles = document['data']
         assert ['3', '2', '4', '1'] == [c['id'] for c in articles]
 
@@ -980,7 +1008,8 @@ class TestSorting(ManagerTestBase):
         query_string = dict(sort='-title')
         response = self.app.get('/api/person/1/relationships/articles',
                                 query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         articles = document['data']
         articleids = [article['id'] for article in articles]
         assert ['4', '3', '2', '1', '0'] == articleids
@@ -1017,7 +1046,8 @@ class TestPagination(ManagerTestBase):
 
         """
         response = self.app.get('/api/person')
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         links = document['links']
         assert 'first' in links
         assert 'last' in links
@@ -1038,7 +1068,8 @@ class TestPagination(ManagerTestBase):
         self.session.add_all(people)
         self.session.commit()
         response = self.app.get('/api/person')
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         pagination = document['links']
         assert '/api/person?' in pagination['first']
         assert 'page[number]=1' in pagination['first']
@@ -1064,7 +1095,8 @@ class TestPagination(ManagerTestBase):
         self.session.commit()
         query_string = {'page[number]': 2, 'page[size]': 3}
         response = self.app.get('/api/person', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         pagination = document['links']
         assert '/api/person?' in pagination['first']
         assert 'page[number]=1' in pagination['first']
@@ -1091,7 +1123,8 @@ class TestPagination(ManagerTestBase):
         self.session.commit()
         query_string = {'page[number]': 2}
         response = self.app.get('/api/person', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         pagination = document['links']
         assert '/api/person?' in pagination['first']
         assert 'page[number]=1' in pagination['first']
@@ -1117,7 +1150,8 @@ class TestPagination(ManagerTestBase):
         self.session.commit()
         query_string = {'sort': '-id', 'page[number]': 2}
         response = self.app.get('/api/person', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         # In reverse order, the first page should have Person instances with
         # IDs 40 through 31, so the second page should have Person instances
         # with IDs 30 through 21.
@@ -1158,7 +1192,8 @@ class TestPagination(ManagerTestBase):
         self.session.commit()
         query_string = {'page[size]': 5}
         response = self.app.get('/api/person', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         pagination = document['links']
         assert '/api/person?' in pagination['first']
         assert 'page[number]=1' in pagination['first']
@@ -1184,7 +1219,8 @@ class TestPagination(ManagerTestBase):
         self.session.commit()
         query_string = {'page[number]': 3}
         response = self.app.get('/api/person', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         pagination = document['links']
         assert '/api/person?' in pagination['first']
         assert 'page[number]=1' in pagination['first']
@@ -1210,7 +1246,8 @@ class TestPagination(ManagerTestBase):
         self.manager.create_api(self.Person, url_prefix='/api2', page_size=5)
         query_string = {'page[number]': 3}
         response = self.app.get('/api2/person', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         pagination = document['links']
         assert '/api2/person?' in pagination['first']
         assert 'page[number]=1' in pagination['first']
@@ -1236,7 +1273,8 @@ class TestPagination(ManagerTestBase):
         self.session.commit()
         self.manager.create_api(self.Person, url_prefix='/api2', page_size=0)
         response = self.app.get('/api2/person')
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         pagination = document['links']
         assert 'first' not in pagination
         assert 'last' not in pagination
@@ -1260,7 +1298,8 @@ class TestPagination(ManagerTestBase):
         self.manager.create_api(self.Person, url_prefix='/api2', page_size=0)
         query_string = {'page[number]': 2}
         response = self.app.get('/api2/person', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
+        validate_schema(document)
         pagination = document['links']
         assert 'first' not in pagination
         assert 'last' not in pagination

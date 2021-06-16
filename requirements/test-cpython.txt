@@ -1,2 +1,5 @@
 -r test.txt
 psycopg2
+
+# mypy requires types-ast and it does not build in pypy
+mypy
