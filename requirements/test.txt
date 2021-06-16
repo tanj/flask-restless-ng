@@ -8,4 +8,3 @@ testing.postgresql
 # linting and formatting
 flake8
 isort
-sqlalchemy2-stubs

@@ -3,3 +3,4 @@ psycopg2
 
 # mypy requires types-ast and it does not build in pypy
 mypy
+sqlalchemy2-stubs
