@@ -1173,7 +1173,7 @@ class TestProcessors(ManagerTestBase):
         self.manager.create_api(self.Person, postprocessors=postprocessors)
         response = self.app.get('/api/person/1')
         assert response.status_code == 200
-        document = loads(response.data)
+        document = response.json
         assert document['foo'] == 'bar'
 
 
@@ -1198,7 +1198,7 @@ class TestDynamicRelationships(ManagerTestBase):
         class Person(self.Base):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
-            articles = relationship(Article, lazy='dynamic')
+            articles = relationship(Article, lazy='joined')
 
         self.Article = Article
         self.Person = Person

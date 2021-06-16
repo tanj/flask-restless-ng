@@ -29,6 +29,7 @@ from .serialization import FastSerializer
 from .views import API
 from .views import RelationshipAPI
 from .views.base import FetchCollection
+from .views.base import FetchResource
 
 #: The names of HTTP methods that allow fetching information.
 READONLY_METHODS = frozenset(('GET', ))
@@ -652,10 +653,21 @@ class APIManager:
             preprocessors=preprocessors_['GET_COLLECTION'],
             postprocessors=postprocessors_['GET_COLLECTION'],
             max_page_size=max_page_size,
-            page_size=page_size
+            page_size=page_size,
+            includes=includes
         )
         if 'GET' in methods:
             add_rule(collection_url, view_func=get_collection_function, methods=['GET'])
+
+        get_resource_function = FetchResource.as_view(
+            name=f'{collection_name}_get_resource',
+            session=session,
+            model=model,
+            api_manager=self,
+            preprocessors=preprocessors_['GET_RESOURCE'],
+            postprocessors=postprocessors_['GET_RESOURCE'],
+            includes=includes
+        )
 
         # The URL for accessing the entire collection. (POST is special because
         # the :meth:`API.post` method doesn't have any arguments.)
@@ -673,9 +685,7 @@ class APIManager:
         resource_methods = frozenset(('DELETE', 'PATCH')) & methods
         add_rule(resource_url, view_func=api_view, methods=resource_methods)
         resource_methods = READONLY_METHODS & methods
-        resource_defaults = dict(relation_name=None, related_resource_id=None)
-        add_rule(resource_url, view_func=api_view, methods=resource_methods,
-                 defaults=resource_defaults)
+        add_rule(resource_url, view_func=get_resource_function, methods=resource_methods)
 
         # The URL for accessing a related resource, which may be a to-many or a
         # to-one relationship.

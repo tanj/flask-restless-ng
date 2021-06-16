@@ -460,7 +460,7 @@ class TestInclusion(ManagerTestBase):
         # In the alternate API, articles are included by default in compound
         # documents.
         response = self.app.get('/api2/person/1')
-        document = loads(response.data)
+        document = response.json
         person = document['data']
         linked = document['included']
         articles = person['relationships']['articles']['data']
@@ -732,7 +732,7 @@ class TestSparseFieldsets(ManagerTestBase):
         self.session.commit()
         query_string = {'fields[person]': 'id,name'}
         response = self.app.get('/api/person/1', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
         person = document['data']
         # ID and type must always be included.
         assert ['attributes', 'id', 'type'] == sorted(person)
@@ -800,7 +800,7 @@ class TestSparseFieldsets(ManagerTestBase):
                         'fields[person]': 'id,name,articles',
                         'fields[article]': 'id'}
         response = self.app.get('/api/person/1', query_string=query_string)
-        document = loads(response.data)
+        document = response.json
         person = document['data']
         linked = document['included']
         # We requested 'id', 'name', and 'articles'; 'id' and 'type' must

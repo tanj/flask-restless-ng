@@ -17,14 +17,13 @@ The main class in this module, :class:`APIBase`, is a
 for JSON API requests on a SQLAlchemy backend.
 
 """
-from __future__ import division
-
 import math
 import re
 from collections import defaultdict
 from functools import partial
 from functools import wraps
 from itertools import chain
+from typing import Set
 from typing import Tuple
 from urllib.parse import urlparse
 from urllib.parse import urlunparse
@@ -36,8 +35,6 @@ from flask import request
 from flask.views import MethodView
 from flask.views import View
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import load_only
-from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.query import Query
 from sqlalchemy.sql import false as FALSE
 from werkzeug.exceptions import HTTPException
@@ -45,15 +42,19 @@ from werkzeug.http import parse_options_header
 
 from ..exceptions import BadRequest
 from ..exceptions import Error
+from ..exceptions import NotFound
+from ..helpers import get_inclusions_for_instances
 from ..helpers import get_model
 from ..helpers import get_related_model
 from ..helpers import is_like_list
-from ..helpers import is_proxy
+from ..helpers import query_by_primary_key
+from ..helpers import selectinload_included_relationships
 from ..helpers import session_query
 from ..search import ComparisonToNull
 from ..search import search
 from ..serialization import DeserializationException
 from ..serialization import SerializationException
+from ..typehints import ResponseTuple
 from .helpers import count
 from .helpers import upper_keys as upper
 
@@ -708,7 +709,7 @@ def errors_from_serialization_exceptions(exceptions, included=False):
     return errors_response(500, errors)
 
 
-class Paginated(object):
+class Paginated:
     """Represents a paginated list of resources.
 
     This class is intended to be instantiated *after* the correct page
@@ -970,9 +971,7 @@ class ModelView(MethodView):
         self.model = model
 
 
-class FetchCollection(View):
-    """Processes requests to fetch a resource collection."""
-
+class FetchView(View):
     decorators = [catch_processing_exceptions, requires_json_api_accept, requires_json_api_mimetype, mime_renderer]
 
     def __init__(self, session, model, api_manager, page_size=10, max_page_size=100, preprocessors=None, postprocessors=None, includes=None):
@@ -988,17 +987,54 @@ class FetchCollection(View):
         if includes:
             self.default_includes = frozenset(includes)
         else:
-            self.default_includes = None
+            self.default_includes = {}
 
-    def dispatch_request(self):
+    def dispatch_request(self, *args, **kwargs):
+        include = request.args.get('include')
+        if include is None:
+            include = self.default_includes
+        else:
+            include = set(include.split(','))
+
         try:
-            return self.get_data()
+            return self.get_data(*args, include=include, **kwargs)
         except Error as e:
             return error_response(e.http_code, cause=e.cause, detail=e.details)
         except MultipleExceptions as e:
             return errors_from_serialization_exceptions(e.exceptions)
 
-    def get_data(self):
+    def get_data(self, *args, include: Set[str] = None, **kwargs) -> ResponseTuple:
+        raise NotImplementedError
+
+    def _serialize_instances(self, instances):
+        # should live in API MANAGER?
+        serialized_instances = []
+        failed = []
+        for instance in instances:
+            if instance is None:
+                continue
+            model = get_model(instance)
+            serialize = self.api_manager.serializer_for(model)
+            # This may raise ValueError
+            _type = self.api_manager.collection_name(model)
+            # TODO The `only` keyword argument will be ignored when
+            # serializing relationships, so we don't really need to
+            # recompute this every time.
+            only = self.sparse_fields.get(_type)
+            try:
+                serialized = serialize(instance, only=only)
+                serialized_instances.append(serialized)
+            except SerializationException as exception:
+                failed.append(exception)
+        if failed:
+            raise MultipleExceptions(failed)
+        return serialized_instances
+
+
+class FetchCollection(FetchView):
+    """Processes requests to fetch a resource collection."""
+
+    def get_data(self, *args, include=None, **kwargs):
         filters, sort = collection_parameters()
         for preprocessor in self.preprocessors:
             preprocessor(filters=filters, sort=sort)
@@ -1011,39 +1047,9 @@ class FetchCollection(View):
         if page_number < 0:
             raise BadRequest(details='Page number can not be negative')
 
-        query = search(self.session, self.model, filters=filters, sort=sort)
-
-        to_include = request.args.get('include')
-        if to_include is None:
-            to_include = self.default_includes
-        else:
-            to_include = set(to_include.split(','))
-
-        inclusion_tree = dict()
-        join_paths = set()
-
-        if to_include:
-            for path in to_include:
-                tree = path.split('.')
-                current_tree = inclusion_tree
-                for level in tree:
-                    current_tree[level] = current_tree.get(level, {})
-                    current_tree = current_tree[level]
-                join_paths.add(tree[0])
-
         serializer = self.api_manager.serializer_for(self.model)
-        for path in join_paths:
-            if not is_proxy(getattr(self.model, path)):
-                query = query.options(selectinload(self.model, path))
-
-        # if we do not need include the full resource, only query 'id' for relationship data
-        for path in serializer.relationship_columns:
-            if path not in join_paths and not is_proxy(getattr(self.model, path)):
-                options = selectinload(self.model, path)
-                # if request contains filters we need to load all columns
-                if not filters:
-                    options = options.options(load_only('id'))
-                query = query.options(options)
+        query = search(self.session, self.model, filters=filters, sort=sort)
+        query = selectinload_included_relationships(self.model, query, include, serializer.relationship_columns, filters=filters)
 
         if page_size == 0:
             instances = query.all()
@@ -1079,43 +1085,52 @@ class FetchCollection(View):
             'meta': {'total': paginated_data.num_results}
         }
 
-        if to_include:
-
-            def get_inclusions(inclusion_tree, instances):
-                stack = []
-                while True:
-                    for key, sub_tree in inclusion_tree.items():
-                        new_instances = set()
-                        for instance in instances:
-                            included_instance = getattr(instance, key)
-                            if not included_instance:
-                                continue
-                            if is_like_list(instance, key):
-                                new_instances.update(set(included_instance))
-                            else:
-                                new_instances.add(included_instance)
-                        if sub_tree and new_instances:
-                            stack.append((sub_tree, new_instances))
-                        yield new_instances
-                    if not stack:
-                        break
-                    inclusion_tree, instances = stack.pop()
-
-            include_set = set(chain.from_iterable(get_inclusions(inclusion_tree, instances)))
-            include_list = []
-            serialization_exceptions = []
-            for instance in include_set:
-                include_serializer = self.api_manager.serializer_for(type(instance))
-                try:
-                    include_list.append(include_serializer(instance))
-                except SerializationException as e:
-                    serialization_exceptions.append(e)
-            if serialization_exceptions:
-                raise MultipleExceptions(serialization_exceptions)
+        if include:
+            include_set = get_inclusions_for_instances(include, instances)
+            include_list = self._serialize_instances(include_set)
             result['included'] = include_list
+
         for postprocessor in self.postprocessors:
             postprocessor(result=result, filters=filters, sort=sort)
         return result, 200, headers
+
+
+class FetchResource(FetchView):
+
+    def get_data(self, *args, include=None, resource_id=None, **kwargs) -> ResponseTuple:
+        for preprocessor in self.preprocessors:
+            temp_result = preprocessor(resource_id=resource_id)
+            # Let the return value of the preprocessor be the new value of
+            # instid, thereby allowing the preprocessor to effectively specify
+            # which instance of the model to process on.
+            #
+            # We assume that if the preprocessor returns None, it really just
+            # didn't return anything, which means we shouldn't overwrite the
+            # instid.
+            if temp_result is not None:
+                resource_id = temp_result
+
+        primary_key = self.api_manager.primary_key_for(self.model)
+        query = query_by_primary_key(self.session, self.model, resource_id, primary_key)
+        serializer = self.api_manager.serializer_for(self.model)
+        query = selectinload_included_relationships(self.model, query, include, serializer.relationship_columns)
+        instance = query.first()
+        if not instance:
+            raise NotFound(details=f'No resource with ID {resource_id}')
+
+        data = self._serialize_instances([instance])
+        result = {'data': data[0]}
+
+        if include:
+            include_set = get_inclusions_for_instances(include, [instance])
+            include_set.discard(instance)  # do not duplicate resource itself inside include
+            include_list = self._serialize_instances(include_set)
+            result['included'] = include_list
+
+        for postprocessor in self.postprocessors:
+            postprocessor(result=result)
+
+        return result, 200, {}
 
 
 class APIBase(ModelView):

@@ -9,7 +9,7 @@
 # Flask-Restless is distributed under both the GNU Affero General Public
 # License version 3 and under the 3-clause BSD license. For more
 # information, see LICENSE.AGPL and LICENSE.BSD.
-"""Flask-Restless is a `Flask`_ extension that provides simple
+"""Flask-Restless-NG is a `Flask`_ extension that provides simple
 generation of ReSTful APIs that satisfy the `JSON API`_ specification
 given database models defined using `SQLAlchemy`_ (or
 `Flask-SQLAlchemy`_).
@@ -19,9 +19,8 @@ code`_ repository.
 
 .. _Flask: http://flask.pocoo.org
 .. _SQLAlchemy: https://sqlalchemy.org
-.. _Flask-SQLAlchemy: https://pypi.python.org/pypi/Flask-SQLAlchemy
 .. _JSON API: http://jsonapi.org
-.. _documentation: https://flask-restless.readthedocs.org
+.. _documentation: https://flask-restless-ng.readthedocs.org
 .. _pypi: https://pypi.python.org/pypi/Flask-Restless-NG
 .. _source code: https://github.com/mrevutskyi/flask-restless-ng
 

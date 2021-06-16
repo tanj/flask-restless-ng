@@ -38,6 +38,7 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
 from flask_restless import SerializationException
+from flask_restless import Serializer
 
 from .helpers import GUID
 from .helpers import ManagerTestBase
@@ -219,12 +220,16 @@ class TestFetchResource(ManagerTestBase):
         self.session.commit()
 
         # TODO: revisit
-        def serializer(instance, **kw):
-            result = {'attributes': {}}
-            result['attributes']['foo'] = 'bar'
-            return result
+        class CustomSerializer(Serializer):
 
-        self.manager.create_api(self.Person, serializer=serializer)
+            relationship_columns = {}
+
+            def __call__(self, *args, **kwargs):
+                result = {'attributes': {}}
+                result['attributes']['foo'] = 'bar'
+                return result
+
+        self.manager.create_api(self.Person, serializer=CustomSerializer())
         response = self.app.get('/api/person/1')
         document = loads(response.data)
         person = document['data']
@@ -244,22 +249,29 @@ class TestFetchResource(ManagerTestBase):
         self.session.commit()
 
         # TODO: revisit
-        def add_foo(instance, *args, **kw):
-            result = {}
-            if 'attributes' not in result:
-                result['attributes'] = {}
-            result['attributes']['foo'] = 'foo'
-            return result
 
-        def add_bar(instance, *args, **kw):
-            result = {}
-            if 'attributes' not in result:
-                result['attributes'] = {}
-            result['attributes']['bar'] = 'bar'
-            return result
+        class AddFooSerializer(Serializer):
+            relationship_columns = {}
 
-        self.manager.create_api(self.Person, serializer=add_foo)
-        self.manager.create_api(self.Article, serializer=add_bar)
+            def __call__(self, *args, **kwargs):
+                result = {}
+                if 'attributes' not in result:
+                    result['attributes'] = {}
+                result['attributes']['foo'] = 'foo'
+                return result
+
+        class AddBarSerializer(Serializer):
+            relationship_columns = {}
+
+            def __call__(self, *args, **kwargs):
+                result = {}
+                if 'attributes' not in result:
+                    result['attributes'] = {}
+                result['attributes']['bar'] = 'bar'
+                return result
+
+        self.manager.create_api(self.Person, serializer=AddFooSerializer())
+        self.manager.create_api(self.Article, serializer=AddBarSerializer())
 
         query_string = {'include': 'author'}
         response = self.app.get('/api/article/1', query_string=query_string)
@@ -285,7 +297,13 @@ class TestFetchResource(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
 
-        self.manager.create_api(self.Person, serializer=partial(raise_exception, 'person'))
+        class CustomSerializer(Serializer):
+            relationship_columns = {}
+
+            def __call__(self, instance, *args, **kwargs):
+                raise_exception('person', instance)
+
+        self.manager.create_api(self.Person, serializer=CustomSerializer())
 
         response = self.app.get('/api/person/1')
         check_sole_error(response, 500, ['Failed to serialize', 'type',
@@ -392,10 +410,13 @@ class TestFetchResource(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
 
-        def raise_with_msg(instance, *args, **kw):
-            raise SerializationException(instance, message='foo')
+        class CustomSerializer(Serializer):
+            relationship_columns = {}
 
-        self.manager.create_api(self.Person, serializer=raise_with_msg)
+            def __call__(self, instance, *args, **kwargs):
+                raise SerializationException(instance, message='foo')
+
+        self.manager.create_api(self.Person, serializer=CustomSerializer())
 
         response = self.app.get('/api/person/1')
         check_sole_error(response, 500, ['foo'])

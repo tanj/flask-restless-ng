@@ -1,4 +1,5 @@
 from http.client import BAD_REQUEST
+from http.client import NOT_FOUND
 
 
 class Error(Exception):
@@ -11,3 +12,7 @@ class Error(Exception):
 
 class BadRequest(Error):
     http_code = BAD_REQUEST
+
+
+class NotFound(Error):
+    http_code = NOT_FOUND

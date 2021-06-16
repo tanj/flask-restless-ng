@@ -13,8 +13,12 @@
 import datetime
 import inspect
 from functools import lru_cache
-from typing import Any
+from itertools import chain
+from typing import Any, Dict
+from typing import Generator
+from typing import Iterable
 from typing import List
+from typing import Set
 
 from dateutil.parser import parse as parse_datetime
 from sqlalchemy import Date
@@ -26,10 +30,15 @@ from sqlalchemy.ext.hybrid import HYBRID_PROPERTY
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.inspection import inspect as sqlalchemy_inspect
 from sqlalchemy.orm import ColumnProperty
+from sqlalchemy.orm import DeclarativeMeta
+from sqlalchemy.orm import Query
 from sqlalchemy.orm import RelationshipProperty as RelProperty
 from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import load_only
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.attributes import QueryableAttribute
+from sqlalchemy.orm.dynamic import DynamicAttributeImpl
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import ColumnElement
 
@@ -243,6 +252,65 @@ def query_by_primary_key(session, model, pk_value, primary_key=None):
     pk_name = primary_key
     query = session_query(session, model)
     return query.filter(getattr(model, pk_name) == pk_value)
+
+
+def selectinload_included_relationships(
+        model: DeclarativeMeta,
+        query: Query,
+        include: Set[str],
+        relationship_columns: Set[str],
+        filters=None
+) -> Query:
+    join_paths = {path.split('.')[0] for path in include}
+
+    for path in join_paths:
+        attribute = getattr(model, path)
+        if not is_proxy(attribute) and not isinstance(attribute.impl, DynamicAttributeImpl):
+            query = query.options(selectinload(attribute))
+
+    for path in relationship_columns:
+        attribute = getattr(model, path)
+        if path not in join_paths and not is_proxy(attribute) and not isinstance(attribute.impl, DynamicAttributeImpl):
+            options = selectinload(attribute)
+            # if request contains filters we need to load all columns
+            if not filters:
+                options = options.options(load_only('id'))
+            query = query.options(options)
+
+    return query
+
+
+def get_inclusions_for_instances(include: Set[str], instances) -> Set:
+    inclusion_tree: Dict[str, dict] = dict()
+    for path in include:
+        tree = path.split('.')
+        current_tree = inclusion_tree
+        for level in tree:
+            current_tree[level] = current_tree.get(level, {})
+            current_tree = current_tree[level]
+
+    return set(chain.from_iterable(get_inclusions(inclusion_tree, instances)))
+
+
+def get_inclusions(inclusion_tree: Dict[str, dict], instances: Iterable) -> Generator:
+    stack = []
+    while True:
+        for key, sub_tree in inclusion_tree.items():
+            new_instances = set()
+            for instance in instances:
+                included_instance = getattr(instance, key)
+                if not included_instance:
+                    continue
+                if is_like_list(instance, key):
+                    new_instances.update(set(included_instance))
+                else:
+                    new_instances.add(included_instance)
+            if sub_tree and new_instances:
+                stack.append((sub_tree, new_instances))
+            yield new_instances
+        if not stack:
+            break
+        inclusion_tree, instances = stack.pop()
 
 
 def get_by(session, model, pk_value, primary_key):
