@@ -1490,7 +1490,7 @@ class APIBase(ModelView):
             # `self.model` should match `get_model(primary_resource)`
             self_link = self.api_manager.url_for(self.model, resource_id=resource_id, relation_name=relation_name, related_resource_id=related_resource_id)
             result['links']['self'] = self_link
-        elif is_relation:
+        else:
             resource_id = self.api_manager.primary_key_value(primary_resource)
             # `self.model` should match `get_model(primary_resource)`
             if is_relationship:
@@ -1501,8 +1501,6 @@ class APIBase(ModelView):
             else:
                 self_link = self.api_manager.url_for(self.model, resource_id=resource_id, relation_name=relation_name)
                 result['links']['self'] = self_link
-        else:
-            result['links']['self'] = self.api_manager.url_for(self.model)
 
         # Include any requested resources in a compound document.
         try:

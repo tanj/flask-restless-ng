@@ -220,40 +220,6 @@ class API(APIBase):
                                              primary_resource=primary_resource,
                                              relation_name=relation_name)
 
-    def _get_resource(self, resource_id):
-        """Returns a response containing a single resource with the specified
-        ID.
-
-        For example, a request like::
-
-            GET /people/1
-
-        will fetch the person resource with ID 1.
-
-        In general, this method is called on requests of the form::
-
-            GET /<collection_name>/<resource_id>
-
-        """
-        for preprocessor in self.preprocessors['GET_RESOURCE']:
-            temp_result = preprocessor(resource_id=resource_id)
-            # Let the return value of the preprocessor be the new value of
-            # instid, thereby allowing the preprocessor to effectively specify
-            # which instance of the model to process on.
-            #
-            # We assume that if the preprocessor returns None, it really just
-            # didn't return anything, which means we shouldn't overwrite the
-            # instid.
-            if temp_result is not None:
-                resource_id = temp_result
-        # Get the resource with the specified ID.
-        resource = get_by(self.session, self.model, resource_id,
-                          self.primary_key)
-        if resource is None:
-            detail = 'No resource with ID {0}'.format(resource_id)
-            return error_response(404, detail=detail)
-        return self._get_resource_helper(resource)
-
     def get(self, resource_id, relation_name, related_resource_id):
         """Returns the JSON document representing a resource or a collection of
         resources.
@@ -280,8 +246,6 @@ class API(APIBase):
         format specified by the JSON API specification.
 
         """
-        if relation_name is None:
-            return self._get_resource(resource_id)
         if related_resource_id is None:
             return self._get_relation(resource_id, relation_name)
         return self._get_related_resource(resource_id, relation_name, related_resource_id)
