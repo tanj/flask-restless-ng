@@ -28,12 +28,12 @@ Using `pip` is probably the easiest way to install this:
 
 To run the tests:
 
-    python -m unittest
+    make check
 
 
 ## Building distribution package
 
-    python3 setup.py sdist bdist_wheel
+    make package
 
 ## Building documentation ##
 

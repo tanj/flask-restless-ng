@@ -11,3 +11,6 @@ test:
 	pytest tests/
 
 check: isort flake8 mypy test
+
+package:
+	python3 setup.py sdist bdist_wheel
