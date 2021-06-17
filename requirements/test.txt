@@ -8,3 +8,4 @@ testing.postgresql
 # linting and formatting
 flake8
 isort
+pytest

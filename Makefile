@@ -7,4 +7,7 @@ isort:
 mypy:
 	mypy flask_restless/
 
-check: isort flake8 mypy
+test:
+	pytest tests/
+
+check: isort flake8 mypy test
