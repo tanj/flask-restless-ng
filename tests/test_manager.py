@@ -292,6 +292,7 @@ class TestAPIManager(ManagerTestBase):
         instance = self.Foo(b=1, a=u'foo_bar')
         self.session.add(instance)
         self.session.commit()
+        self.manager.include_links = True
         self.manager.create_api(self.Foo, primary_key='a')
 
         response = self.app.get('/api/foo')

@@ -62,7 +62,7 @@ class TestPerformance(unittest.TestCase):
 
         self.test_client = app.test_client()
 
-        api_manager = APIManager(app=app, session=session, url_prefix='/api')
+        api_manager = APIManager(app=app, session=session, url_prefix='/api', include_links=False)
         api_manager.create_api(Person, collection_name='people', page_size=0)
         api_manager.create_api(Article, collection_name='articles', page_size=0)
         api_manager.create_api(Comment, collection_name='comments', page_size=0)

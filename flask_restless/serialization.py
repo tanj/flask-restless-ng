@@ -443,7 +443,7 @@ class FastSerializer(Serializer):
             result['relationships'] = {rel: self.create_relationship(instance, rel) for rel in relations}
 
         # TODO: Refactor
-        if ((self._only is None or 'self' in self._only)
+        if (self._api_manager.include_links and (self._only is None or 'self' in self._only)
                 and (only is None or 'self' in only)):
             instance_id = getattr(instance, self._api_manager.primary_key_for(self._model))
             path = self._api_manager.url_for(self._model, resource_id=instance_id, _method='GET')
@@ -472,20 +472,21 @@ class FastSerializer(Serializer):
 
         """
         result = {}
-        # Create the self and related links.
-        pk_value = getattr(instance, self._api_manager.primary_key_for(self._model))
-        self_link = self._api_manager.url_for(self._model, resource_id=pk_value, relation_name=relation, relationship=True)
-        related_link = self._api_manager.url_for(self._model, resource_id=pk_value, relation_name=relation)
-        result['links'] = {'self': self_link}
-        # If the user has not created a GET endpoint for the related
-        # resource, then there is no "related" link to provide, so we check
-        # whether the URL exists before setting the related link.
-        try:
-            get_related_model(self._model, relation)
-        except ValueError:
-            pass
-        else:
-            result['links']['related'] = related_link
+        if self._api_manager.include_links:
+            # Create the self and related links.
+            pk_value = getattr(instance, self._api_manager.primary_key_for(self._model))
+            self_link = self._api_manager.url_for(self._model, resource_id=pk_value, relation_name=relation, relationship=True)
+            related_link = self._api_manager.url_for(self._model, resource_id=pk_value, relation_name=relation)
+            result['links'] = {'self': self_link}
+            # If the user has not created a GET endpoint for the related
+            # resource, then there is no "related" link to provide, so we check
+            # whether the URL exists before setting the related link.
+            try:
+                get_related_model(self._model, relation)
+            except ValueError:
+                pass
+            else:
+                result['links']['related'] = related_link
         # Get the related value so we can see if it is a to-many
         # relationship or a to-one relationship.
         related_value = getattr(instance, relation)

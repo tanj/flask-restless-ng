@@ -103,9 +103,9 @@ class APIManager:
 
         engine = create_engine('sqlite:////tmp/mydb.sqlite')
         Session = sessionmaker(bind=engine)
-        mysession = Session()
+        my_session = Session()
         app = Flask(__name__)
-        apimanager = APIManager(app, session=mysession)
+        api_manager = APIManager(app, session=my_session)
 
     `url_prefix` is the URL prefix at which each API created by this
     instance will be accessible. For example, if this is set to
@@ -126,15 +126,12 @@ class APIManager:
     information on using preprocessors and postprocessors, see
     :ref:`processors`.
 
+    `include_links` controls whether to include link objects in resource objects
+    https://jsonapi.org/format/#document-links
+
     """
 
-    #: The format of the name of the API view for a given model.
-    #:
-    #: This format string expects the name of a model to be provided when
-    #: formatting.
-    APINAME_FORMAT = '{0}api'
-
-    def __init__(self, app=None, session=None, preprocessors=None, postprocessors=None, url_prefix=None):
+    def __init__(self, app=None, session=None, preprocessors=None, postprocessors=None, url_prefix=None, include_links: bool = False):
         if session is None:
             raise ValueError('`session` can not be empty')
 
@@ -150,31 +147,17 @@ class APIManager:
         #: to the app when calling :meth:`init_app`.
         self.blueprints = []
 
-        # pre = preprocessors or {}
-        # post = postprocessors or {}
-        # self.restless_info = RestlessInfo(session, pre, post)
         self.pre = preprocessors or {}
         self.post = postprocessors or {}
         self.session = session
 
         #: The default URL prefix for APIs created by this manager.
         #:
-        #: This can be overriden by the `url_prefix` keyword argument in the
+        #: This can be overridden by the `url_prefix` keyword argument in the
         #: :meth:`create_api` method.
         self.url_prefix = url_prefix
 
-        # if self.app is not None:
-        #     self.init_app(self.app)
-
-    @staticmethod
-    def api_name(collection_name):
-        """Returns the name of the :class:`API` instance exposing models of the
-        specified type of collection.
-
-        `collection_name` must be a string.
-
-        """
-        return APIManager.APINAME_FORMAT.format(collection_name)
+        self.include_links = include_links
 
     def url_for(self, model, **kw) -> str:
         """Returns the URL for the specified model, similar to
@@ -285,7 +268,7 @@ class APIManager:
         To use this method with pure SQLAlchemy, for example::
 
             from flask import Flask
-            from flask.ext.restless import APIManager
+            from flask_restless import APIManager
             from sqlalchemy import create_engine
             from sqlalchemy.orm.session import sessionmaker
 
@@ -297,20 +280,20 @@ class APIManager:
             ...
 
             # Create the API manager and create the APIs.
-            apimanager = APIManager(session=mysession)
-            apimanager.create_api(User)
-            apimanager.create_api(Comment)
+            api_manager = APIManager(session=mysession)
+            api_manager.create_api(User)
+            api_manager.create_api(Comment)
 
             # Later, call `init_app` to register the blueprints for the
             # APIs created earlier.
             app = Flask(__name__)
-            apimanager.init_app(app)
+            api_manager.init_app(app)
 
         and with models defined with Flask-SQLAlchemy::
 
             from flask import Flask
-            from flask.ext.restless import APIManager
-            from flask.ext.sqlalchemy import SQLAlchemy
+            from flask_restless import APIManager
+            from flask_sqlalchemy import SQLAlchemy
 
             db = SQLALchemy(app)
 
@@ -318,14 +301,14 @@ class APIManager:
             ...
 
             # Create the API manager and create the APIs.
-            apimanager = APIManager(flask_sqlalchemy_db=db)
-            apimanager.create_api(User)
-            apimanager.create_api(Comment)
+            api_manager = APIManager(session=db.session)
+            api_manager.create_api(User)
+            api_manager.create_api(Comment)
 
             # Later, call `init_app` to register the blueprints for the
             # APIs created earlier.
             app = Flask(__name__)
-            apimanager.init_app(app)
+            api_manager.init_app(app)
 
         """
         # Register any queued blueprints on the given application.
@@ -548,7 +531,7 @@ class APIManager:
         # convert all method names to upper case
         methods = frozenset((m.upper() for m in methods))
         # the name of the API, for use in creating the view and the blueprint
-        apiname = APIManager.api_name(collection_name)
+        api_name = f'{collection_name}_api'
         # Prepend the universal preprocessors and postprocessors specified in
         # the constructor of this class.
         preprocessors_ = defaultdict(list)
@@ -580,7 +563,7 @@ class APIManager:
         #
         # Rename some variables with long names for the sake of brevity.
         atmr = allow_to_many_replacement
-        api_view = API.as_view(apiname, session, model, self,
+        api_view = API.as_view(api_name, session, model, self,
                                # Keyword arguments for APIBase.__init__()
                                preprocessors=preprocessors_,
                                postprocessors=postprocessors_,
@@ -624,7 +607,7 @@ class APIManager:
         # :http:get:`/api/articles/1/relationships/author` interpret the
         # word `relationships` as the name of a relation of an article
         # object.
-        relationship_api_name = f'{apiname}_relationships'
+        relationship_api_name = f'{api_name}_relationships'
         adftmr = allow_delete_from_to_many_relationships
         relationship_api_view = RelationshipAPI.as_view(
             relationship_api_name, session, model, self,

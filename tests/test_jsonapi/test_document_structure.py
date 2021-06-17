@@ -70,6 +70,7 @@ class TestDocumentStructure(ManagerTestBase):
         self.Comment = Comment
         self.Person = Person
         self.Base.metadata.create_all()
+        self.manager.include_links = True
         self.manager.create_api(Article)
         self.manager.create_api(Comment)
         self.manager.create_api(Person, methods=['GET', 'POST'])
