@@ -48,6 +48,7 @@ from .helpers import ManagerTestBase
 from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import loads
+from .test_serialization import build_serializer_with_exception
 
 
 def raise_s_exception(instance, *args, **kw):
@@ -58,6 +59,7 @@ def raise_s_exception(instance, *args, **kw):
     exceptions.
 
     """
+
     raise SerializationException(instance=instance, resource_id=instance.id, resource_type='person')
 
 
@@ -68,7 +70,10 @@ def raise_d_exception(*args, **kw):
     exceptions.
 
     """
-    raise DeserializationException()
+    class Deserializer:
+        def deserialize(self, *args):
+            raise DeserializationException()
+    return Deserializer()
 
 
 class TestCreating(ManagerTestBase):
@@ -470,37 +475,39 @@ class TestCreating(ManagerTestBase):
 
     def test_collection_name(self):
         """Tests for creating a resource with an alternate collection name."""
-        self.manager.create_api(self.Person, methods=['POST'],
-                                collection_name='people')
+        self.manager.create_api(self.Person, methods=['POST'], collection_name='people')
         data = dict(data=dict(type='people'))
-        response = self.app.post('/api/people', data=dumps(data))
+        response = self.app.post('/api/people', json=data)
         assert response.status_code == 201
-        document = loads(response.data)
-        person = document['data']
+        person = response.json['data']
         assert person['type'] == 'people'
 
     def test_custom_serialization(self):
         """Tests for custom deserialization."""
         temp = []
 
-        # TODO: revisit
-        def serializer(instance, *args, **kw):
-            result = {'attributes': {'foo': 'bar'}}
-            result['attributes']['foo'] = temp.pop()
-            return result
+        person_cls = self.Person
 
-        def deserializer(document, *args, **kw):
-            # Move the attributes up to the top-level object.
-            data = document['data']['attributes']
-            temp.append(data.pop('foo'))
-            instance = self.Person(**data)
-            return instance
+        class CustomSerializer:
+            def serialize(self, instance, *args, **kw):
+                result = {'attributes': {'foo': 'bar'}}
+                result['attributes']['foo'] = temp.pop()
+                return result
+
+        class CustomDeserializer:
+
+            def deserialize(self, document):
+                # Move the attributes up to the top-level object.
+                data = document['data']['attributes']
+                temp.append(data.pop('foo'))
+                instance = person_cls(**data)
+                return instance
 
         # POST will deserialize once and serialize once
         self.manager.create_api(self.Person, methods=['POST'],
                                 url_prefix='/api2',
-                                serializer=serializer,
-                                deserializer=deserializer)
+                                serializer=CustomSerializer(),
+                                deserializer=CustomDeserializer())
         data = dict(data=dict(type='person', attributes=dict(foo='bar')))
         response = self.app.post('/api2/person', data=dumps(data))
         assert response.status_code == 201
@@ -518,7 +525,7 @@ class TestCreating(ManagerTestBase):
         self.session.commit()
         self.manager.create_api(self.Article, methods=['POST'],
                                 url_prefix='/api2')
-        self.manager.create_api(self.Person, serializer=raise_s_exception)
+        self.manager.create_api(self.Person, serializer=build_serializer_with_exception('person'))
         data = {
             'data': {
                 'type': 'article',
@@ -546,9 +553,9 @@ class TestCreating(ManagerTestBase):
         """
         self.manager.create_api(self.Person, methods=['POST'],
                                 url_prefix='/api2',
-                                deserializer=raise_d_exception)
+                                deserializer=raise_d_exception())
         data = dict(data=dict(type='person'))
-        response = self.app.post('/api2/person', data=dumps(data))
+        response = self.app.post('/api2/person', json=data)
         assert response.status_code == 400
         # TODO check error message here
 
@@ -557,9 +564,11 @@ class TestCreating(ManagerTestBase):
         raises an exception.
 
         """
-        self.manager.create_api(self.Person, methods=['POST'],
-                                url_prefix='/api2',
-                                serializer=raise_s_exception)
+        class CustomSerializer:
+            def serialize(self, *args, **kwargs):
+                raise_s_exception(*args)
+
+        self.manager.create_api(self.Person, methods=['POST'], url_prefix='/api2', serializer=CustomSerializer())
         data = dict(data=dict(type='person'))
         response = self.app.post('/api2/person', data=dumps(data))
         assert response.status_code == 400

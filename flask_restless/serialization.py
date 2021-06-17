@@ -19,13 +19,15 @@ deserialization as expected by classes that follow the JSON API
 protocol.
 
 """
-from __future__ import division
 
+from abc import ABC
+from abc import abstractmethod
 from copy import copy
 from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
+from typing import FrozenSet
 from typing import Optional
 from urllib.parse import urljoin
 
@@ -265,15 +267,24 @@ def get_column_name(column):
     return column
 
 
-class Serializer:
+class Serializer(ABC):
     """An object that, when called, returns a dictionary representation of a
     given instance of a SQLAlchemy model.
 
-    **This is a base class with no implementation.**
-
     """
 
-    def __call__(self, instance, only=None):
+    @property
+    @abstractmethod
+    def attributes_columns(self) -> FrozenSet[str]:
+        """Provides a set of column names that should represent model's attributes"""
+
+    @property
+    @abstractmethod
+    def relationship_columns(self) -> FrozenSet[str]:
+        """Provides a set of column names that should represent model's relationships"""
+
+    @abstractmethod
+    def serialize(self, instance, only=None):
         """Returns a dictionary representation of the specified instance of a
         SQLAlchemy model.
 
@@ -281,15 +292,10 @@ class Serializer:
         appear as strings in `only` should appear in the returned
         dictionary. The only exception is that the keys ``'id'`` and ``'type'``
         will always appear, regardless of whether they appear in `only`.
-
-        **This method is not implemented in this base class; subclasses must
-        override this method.**
-
         """
-        raise NotImplementedError
 
 
-class Deserializer(object):
+class Deserializer(ABC):
     """An object that, when called, returns an instance of the SQLAlchemy model
     specified at instantiation time.
 
@@ -308,7 +314,8 @@ class Deserializer(object):
         self.model = model
         self.api_manager = api_manager
 
-    def __call__(self, document):
+    @abstractmethod
+    def deserialize(self, document):
         """Creates and returns a new instance of the SQLAlchemy model specified
         in the constructor whose attributes are given by the specified
         dictionary.
@@ -319,13 +326,9 @@ class Deserializer(object):
         see the `Resource Objects`_ section of the JSON API
         specification.
 
-        **This method is not implemented in this base class; subclasses must
-        override this method.**
-
         .. _Resource Objects: http://jsonapi.org/format/#document-structure-resource-objects
 
         """
-        raise NotImplementedError
 
 
 class FastSerializer(Serializer):
@@ -388,13 +391,18 @@ class FastSerializer(Serializer):
         # Exclude column names that are blacklisted.
         columns = {column for column in columns if not column.startswith('__') and column not in COLUMN_BLACKLIST}
 
+        self._relations = frozenset(self._relations)
         self._columns = frozenset(columns)
 
     @property
     def relationship_columns(self):
-        return frozenset(self._relations)
+        return self._relations
 
-    def __call__(self, instance, only=None):
+    @property
+    def attributes_columns(self):
+        return self._columns
+
+    def serialize(self, instance, only=None):
         columns = copy(self._columns)
 
         if only is not None:
@@ -522,7 +530,7 @@ class DefaultDeserializer(Deserializer):
         #: Whether to allow client generated IDs.
         self.allow_client_generated_ids = allow_client_generated_ids
 
-    def __call__(self, document):
+    def deserialize(self, document):
         """Creates and returns an instance of the SQLAlchemy model
         specified in the constructor.
 
@@ -566,8 +574,8 @@ class DefaultDeserializer(Deserializer):
                 related_model = get_related_model(self.model, link_name)
                 expected_type = self.api_manager.collection_name(related_model)
                 # Create the deserializer for this relationship object.
-                deserialize = DefaultRelationshipDeserializer(self.session, related_model, self.api_manager, relation_name=link_name)
-                links[link_name] = deserialize(linkage)
+                deserializer = DefaultRelationshipDeserializer(self.session, related_model, self.api_manager, relation_name=link_name)
+                links[link_name] = deserializer.deserialize(linkage)
         # TODO Need to check here if any related instances are None,
         # like we do in the patch() method. We could possibly refactor
         # the code above and the code there into a helper function...
@@ -620,7 +628,7 @@ class DefaultRelationshipDeserializer(Deserializer):
         #: The name of the relationship being deserialized, as a string.
         self.relation_name = relation_name
 
-    def __call__(self, data):
+    def deserialize(self, data):
         """Gets the resource associated with the given resource
         identifier object.
 
@@ -652,4 +660,4 @@ class DefaultRelationshipDeserializer(Deserializer):
             return get_by(self.session, self.model, id_, primary_key=primary_key)
         # Otherwise, if this is a to-many relationship, recurse on each
         # and return a list of instances.
-        return list(map(self, data))
+        return list(map(self.deserialize, data))

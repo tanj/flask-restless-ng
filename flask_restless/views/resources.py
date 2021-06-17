@@ -296,7 +296,7 @@ class API(APIBase):
         # Convert the dictionary representation into an instance of the
         # model.
         try:
-            instance = self.deserialize(data)
+            instance = self.deserializer.deserialize(data)
             self.session.add(instance)
             self.session.commit()
         except ClientGeneratedIDNotAllowed as exception:
@@ -314,7 +314,7 @@ class API(APIBase):
         # Get the dictionary representation of the new instance as it
         # appears in the database.
         try:
-            data = self.serialize(instance, only=fields_for_this)
+            data = self.serializer.serialize(instance, only=fields_for_this)
         except SerializationException as exception:
             detail = 'Failed to serialize object'
             return error_response(400, cause=exception, detail=detail)
@@ -528,7 +528,7 @@ class API(APIBase):
         # updates specified by the request, we must return 200 OK and a
         # representation of the modified resource.
         if self.changes_on_update:
-            result = dict(data=self.serialize(instance))
+            result = dict(data=self.serializer.serialize(instance))
             status = 200
         else:
             result = dict()

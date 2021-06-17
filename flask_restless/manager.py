@@ -17,6 +17,8 @@ their SQLAlchemy models.
 """
 from collections import defaultdict
 from collections import namedtuple
+from typing import Dict
+from typing import Optional
 from uuid import uuid1
 
 from flask import Blueprint
@@ -25,7 +27,9 @@ from werkzeug.urls import url_quote_plus
 from .helpers import get_model
 from .helpers import primary_key_names
 from .serialization import DefaultDeserializer
+from .serialization import Deserializer
 from .serialization import FastSerializer
+from .serialization import Serializer
 from .views import API
 from .views import RelationshipAPI
 from .views.base import FetchCollection
@@ -315,17 +319,29 @@ class APIManager:
         for blueprint in self.blueprints:
             app.register_blueprint(blueprint)
 
-    def create_api_blueprint(self, name, model, methods=READONLY_METHODS,
-                             url_prefix=None, collection_name=None,
-                             only=None, exclude=None,
-                             additional_attributes=None,
-                             validation_exceptions=None, page_size=10,
-                             max_page_size=100, preprocessors=None,
-                             postprocessors=None, primary_key='id',
-                             serializer=None, deserializer=None,
-                             includes=None, allow_to_many_replacement=False,
-                             allow_delete_from_to_many_relationships=False,
-                             allow_client_generated_ids=False):
+    def create_api_blueprint(
+            self,
+            name: str,
+            model,
+            methods=READONLY_METHODS,
+            url_prefix: Optional[str] = None,
+            collection_name: Optional[str] = None,
+            only=None,
+            exclude=None,
+            additional_attributes=None,
+            validation_exceptions=None,
+            page_size: int = 10,
+            max_page_size: int = 100,
+            preprocessors=None,
+            postprocessors=None,
+            primary_key: str = 'id',
+            serializer: Serializer = None,
+            deserializer: Deserializer = None,
+            includes=None,
+            allow_to_many_replacement: bool = False,
+            allow_delete_from_to_many_relationships: bool = False,
+            allow_client_generated_ids: bool = False
+    ):
         """Creates and returns a ReSTful API interface as a blueprint, but does
         not register it on any :class:`flask.Flask` application.
 
@@ -459,15 +475,7 @@ class APIManager:
         see :ref:`pagination`.
 
         `serializer` and `deserializer` are custom serialization
-        functions. The former function must take a single positional
-        argument representing the instance of the model to serialize and
-        an additional keyword argument ``only`` representing the fields
-        to include in the serialized representation of the instance, and
-        must return a dictionary representation of that instance. The
-        latter function must take a single argument representing the
-        dictionary representation of an instance of the model and must
-        return an instance of `model` that has those attributes. For
-        more information, see :ref:`serialization`.
+        classes. See :ref:`serialization`.
 
         `preprocessors` is a dictionary mapping strings to lists of
         functions. Each key represents a type of endpoint (for example,
@@ -534,8 +542,8 @@ class APIManager:
         api_name = f'{collection_name}_api'
         # Prepend the universal preprocessors and postprocessors specified in
         # the constructor of this class.
-        preprocessors_ = defaultdict(list)
-        postprocessors_ = defaultdict(list)
+        preprocessors_: Dict[str, list] = defaultdict(list)
+        postprocessors_: Dict[str, list] = defaultdict(list)
         preprocessors_.update(preprocessors or {})
         postprocessors_.update(postprocessors or {})
         # for key, value in self.restless_info.universal_preprocessors.items():

@@ -1014,7 +1014,7 @@ class FetchView(View):
             if instance is None:
                 continue
             model = get_model(instance)
-            serialize = self.api_manager.serializer_for(model)
+            serializer = self.api_manager.serializer_for(model)
             # This may raise ValueError
             _type = self.api_manager.collection_name(model)
             # TODO The `only` keyword argument will be ignored when
@@ -1022,7 +1022,7 @@ class FetchView(View):
             # recompute this every time.
             only = self.sparse_fields.get(_type)
             try:
-                serialized = serialize(instance, only=only)
+                serialized = serializer.serialize(instance, only=only)
                 serialized_instances.append(serialized)
             except SerializationException as exception:
                 failed.append(exception)
@@ -1072,7 +1072,7 @@ class FetchCollection(FetchView):
             instances = query.limit(page_size).offset(offset).all()
         collection_name = self.api_manager.collection_name(self.model)
         only = self.sparse_fields.get(collection_name)
-        data = [serializer(instance, only=only) for instance in instances]
+        data = [serializer.serialize(instance, only=only) for instance in instances]
         paginated_data = Paginated(data, page_size=page_size, num_results=num_results, next_=next_, prev=prev, first=first, last=last)
         links = {'self': self.api_manager.url_for(self.model)}
         links.update(paginated_data.pagination_links)
@@ -1194,14 +1194,14 @@ class APIBase(ModelView):
         #:
         #: This should not be ``None``, unless a subclass is not going to use
         #: serialization.
-        self.serialize = serializer
+        self.serializer = serializer
 
         #: A custom deserialization function for primary resources; see
         #: :ref:`serialization` for more information.
         #:
         #: This should not be ``None``, unless a subclass is not going to use
         #: deserialization.
-        self.deserialize = deserializer
+        self.deserializer = deserializer
 
         #: The tuple of exceptions that are expected to be raised during
         #: validation when creating or updating a model.
@@ -1321,7 +1321,7 @@ class APIBase(ModelView):
                 # is no serializer, use the default serializer for the
                 # current resource, even though the current model may
                 # different from the model of the current instance.
-                serialize = self.api_manager.serializer_for(model)
+                serializer = self.api_manager.serializer_for(model)
                 # This may raise ValueError
                 _type = self.api_manager.collection_name(model)
                 # TODO The `only` keyword argument will be ignored when
@@ -1329,7 +1329,7 @@ class APIBase(ModelView):
                 # recompute this every time.
                 only = self.sparse_fields.get(_type)
                 try:
-                    serialized = serialize(instance, only=only)
+                    serialized = serializer.serialize(instance, only=only)
                     result.append(serialized)
                 except SerializationException as exception:
                     failed.append(exception)
