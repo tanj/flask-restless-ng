@@ -14,7 +14,8 @@ import datetime
 import inspect
 from functools import lru_cache
 from itertools import chain
-from typing import Any, Dict
+from typing import Any
+from typing import Dict
 from typing import Generator
 from typing import Iterable
 from typing import List

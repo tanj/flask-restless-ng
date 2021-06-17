@@ -141,11 +141,11 @@ class APIManager:
         #: created an API via the :meth:`create_api_blueprint` method
         #: and whose values are the corresponding collection names for
         #: those models.
-        self.created_apis_for = {}
+        self.created_apis_for: dict = {}
 
         #: List of blueprints created by :meth:`create_api` to be registered
         #: to the app when calling :meth:`init_app`.
-        self.blueprints = []
+        self.blueprints: list = []
 
         self.pre = preprocessors or {}
         self.post = postprocessors or {}
