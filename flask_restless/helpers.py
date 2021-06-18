@@ -31,7 +31,6 @@ from sqlalchemy.ext.hybrid import HYBRID_PROPERTY
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.inspection import inspect as sqlalchemy_inspect
 from sqlalchemy.orm import ColumnProperty
-from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm import Query
 from sqlalchemy.orm import RelationshipProperty as RelProperty
 from sqlalchemy.orm import class_mapper
@@ -42,6 +41,12 @@ from sqlalchemy.orm.attributes import QueryableAttribute
 from sqlalchemy.orm.dynamic import DynamicAttributeImpl
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import ColumnElement
+
+try:
+    # SQLAlchemy 1.4+
+    from sqlalchemy.orm import DeclarativeMeta
+except ImportError:
+    from sqlalchemy.ext.declarative.api import DeclarativeMeta
 
 try:
     # SQLAlchemy 1.3+
