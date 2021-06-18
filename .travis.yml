@@ -27,7 +27,7 @@ install:
   - pip install coveralls
 
 script:
-  coverage run -m pytest tests/
+  coverage run --source=flask_restless -m pytest tests/
 
 after_success:
   coveralls
