@@ -19,6 +19,7 @@ code`_ repository.
 
 .. _Flask: http://flask.pocoo.org
 .. _SQLAlchemy: https://sqlalchemy.org
+.. _Flask-SQLAlchemy: https://pypi.python.org/pypi/Flask-SQLAlchemy
 .. _JSON API: http://jsonapi.org
 .. _documentation: https://flask-restless-ng.readthedocs.org
 .. _pypi: https://pypi.python.org/pypi/Flask-Restless-NG
@@ -34,11 +35,8 @@ from setuptools import setup
 #: A regular expression capturing the version number from Python code.
 VERSION_RE = r"^__version__ = ['\"]([^'\"]*)['\"]"
 
-# TODO We require Flask version 1.0 or greater if we want Flask to recognize
-# the JSON API mimetype as a form of JSON and therefore automatically be able
-# to deserialize JSON to Python via the Request.get_json() method.
 
-#: The installation requirements for Flask-Restless. Flask-SQLAlchemy is not
+#: The installation requirements Flask-SQLAlchemy is not
 #: required, so the user must install it explicitly.
 REQUIREMENTS = [
     'flask>=1.0',
