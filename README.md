@@ -18,6 +18,8 @@ with the following improvements:
   * 2-5x faster serialization of JSON responses.
   * Miscellaneous bugs fixed
 
+Version `2.0.*` adds a few backward incompatible changes with more performance improvements 
+
 ## Introduction ##
 
 This is Flask-Restless, a [Flask][1] extension that creates URL endpoints that
@@ -83,7 +85,7 @@ db.create_all()
 # Create the Flask-Restless API manager.
 manager = flask_restless.APIManager(app, session=db.session)
 
-# Create API endpoints, which will be available at /api/<tablename> by
+# Create API endpoints, which will be available at /api/<table_name> by
 # default. Allowed HTTP methods can be specified as well.
 manager.create_api(Person, methods=['GET', 'POST', 'DELETE'])
 manager.create_api(Article, methods=['GET'])
