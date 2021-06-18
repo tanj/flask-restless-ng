@@ -225,8 +225,7 @@ class TestLocalAPIManager(SQLAlchemyTestBase):
         manager class, if the new URL starts with a slash.
 
         """
-        manager = APIManager(self.flaskapp, session=self.session,
-                             url_prefix='/foo')
+        manager = APIManager(self.flaskapp, session=self.session, url_prefix='/foo')
         manager.create_api(self.Person, url_prefix='/bar')
         manager.create_api(self.Article, url_prefix='')
         response = self.app.get('/bar/person')

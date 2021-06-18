@@ -331,11 +331,8 @@ class Deserializer(ABC):
         """
 
 
-class FastSerializer(Serializer):
-    """An implementation of serializer optimized for speed.
-
-    Instead of inspecting each model (attributes, foreign keys, etc.) during serialization, it does that during instantiation.
-    """
+class DefaultSerializer(Serializer):
+    """Default Serializer implementation."""
 
     def __init__(self, model, type_name, api_manager, primary_key=None, only=None, exclude=None, additional_attributes=None, **kwargs):
         super().__init__(**kwargs)

@@ -27,8 +27,8 @@ from werkzeug.urls import url_quote_plus
 from .helpers import get_model
 from .helpers import primary_key_names
 from .serialization import DefaultDeserializer
+from .serialization import DefaultSerializer
 from .serialization import Deserializer
-from .serialization import FastSerializer
 from .serialization import Serializer
 from .views import API
 from .views import RelationshipAPI
@@ -38,27 +38,12 @@ from .views.base import FetchResource
 #: The names of HTTP methods that allow fetching information.
 READONLY_METHODS = frozenset(('GET', ))
 
-#: The names of HTTP methods that allow creating, updating, or deleting
-#: information.
+#: The names of HTTP methods that allow creating, updating, or deleting information.
 WRITEONLY_METHODS = frozenset(('PATCH', 'POST', 'DELETE'))
 
 #: The set of all recognized HTTP methods.
 ALL_METHODS = READONLY_METHODS | WRITEONLY_METHODS
 
-#: The default URL prefix for APIs created by instance of :class:`APIManager`.
-DEFAULT_URL_PREFIX = '/api'
-
-STRING_TYPES = (str, )
-
-#: A triple that stores the SQLAlchemy session and the universal pre- and post-
-#: processors to be applied to any API created for a particular Flask
-#: application.
-#:
-#: These tuples are used by :class:`APIManager` to store information about
-#: Flask applications registered using :meth:`APIManager.init_app`.
-# RestlessInfo = namedtuple('RestlessInfo', ['session',
-#                                            'universal_preprocessors',
-#                                            'universal_postprocessors'])
 
 #: A tuple that stores information about a created API.
 #:
@@ -72,8 +57,7 @@ STRING_TYPES = (str, )
 #: - `primary_key`, the primary key used by the model
 #: - `url_prefix`, the url prefix to use for the collection
 #:
-APIInfo = namedtuple('APIInfo', ['collection_name', 'blueprint_name', 'serializer',
-                                 'primary_key', 'url_prefix'])
+APIInfo = namedtuple('APIInfo', ['collection_name', 'blueprint_name', 'serializer', 'primary_key', 'url_prefix'])
 
 
 class IllegalArgumentError(Exception):
@@ -135,7 +119,7 @@ class APIManager:
 
     """
 
-    def __init__(self, app=None, session=None, preprocessors=None, postprocessors=None, url_prefix=None, include_links: bool = False):
+    def __init__(self, app=None, session=None, preprocessors=None, postprocessors=None, url_prefix='/api', include_links: bool = False):
         if session is None:
             raise ValueError('`session` can not be empty')
 
@@ -528,7 +512,7 @@ class APIManager:
             msg = 'Cannot simultaneously specify both `only` and `exclude`'
             raise IllegalArgumentError(msg)
         if not hasattr(model, 'id') and len(primary_key_names(model)) == 0:
-            msg = 'Provided model must have an `id` attribute or primary key'
+            msg = 'Provided model must have an `id` attribute or a primary key'
             raise IllegalArgumentError(msg)
         if collection_name == '':
             msg = 'Collection name must be nonempty'
@@ -546,38 +530,36 @@ class APIManager:
         postprocessors_: Dict[str, list] = defaultdict(list)
         preprocessors_.update(preprocessors or {})
         postprocessors_.update(postprocessors or {})
-        # for key, value in self.restless_info.universal_preprocessors.items():
+
         for key, value in self.pre.items():
             preprocessors_[key] = value + preprocessors_[key]
-        # for key, value in self.restless_info.universal_postprocessors.items():
+
         for key, value in self.post.items():
             postprocessors_[key] = value + postprocessors_[key]
+
         # Validate that all the additional attributes exist on the model.
         if additional_attributes is not None:
             for attr in additional_attributes:
-                if isinstance(attr, STRING_TYPES) and not hasattr(model, attr):
-                    msg = 'no attribute "{0}" on model {1}'.format(attr, model)
-                    raise AttributeError(msg)
+                if not hasattr(model, attr):
+                    raise AttributeError(f'no attribute "{attr}" on model {model}')
+
         # Create a default serializer and deserializer if none have been
         # provided.
         if serializer is None:
-            serializer = FastSerializer(model, collection_name, self, primary_key=primary_key,
-                                        only=only, exclude=exclude, additional_attributes=additional_attributes)
+            serializer = DefaultSerializer(model, collection_name, self, primary_key=primary_key,
+                                           only=only, exclude=exclude, additional_attributes=additional_attributes)
 
         session = self.session
         if deserializer is None:
             deserializer = DefaultDeserializer(self.session, model, self, allow_client_generated_ids=allow_client_generated_ids)
         # Create the view function for the API for this model.
-        #
-        # Rename some variables with long names for the sake of brevity.
-        atmr = allow_to_many_replacement
         api_view = API.as_view(api_name, session, model, self,
                                # Keyword arguments for APIBase.__init__()
                                preprocessors=preprocessors_,
                                postprocessors=postprocessors_,
                                primary_key=primary_key,
                                validation_exceptions=validation_exceptions,
-                               allow_to_many_replacement=atmr,
+                               allow_to_many_replacement=allow_to_many_replacement,
                                # Keyword arguments for API.__init__()
                                page_size=page_size,
                                max_page_size=max_page_size,
@@ -589,14 +571,12 @@ class APIManager:
         # collection only, the second is for methods which may or may not
         # specify an instance, the third is for methods which must specify an
         # instance
-        # TODO what should the second argument here be?
-        # TODO should the url_prefix be specified here or in register_blueprint
-        if url_prefix is not None:
-            prefix = url_prefix
-        elif self.url_prefix is not None:
+
+        if url_prefix is None:
             prefix = self.url_prefix
         else:
-            prefix = DEFAULT_URL_PREFIX
+            prefix = url_prefix
+
         blueprint = Blueprint(name, __name__, url_prefix=prefix)
         add_rule = blueprint.add_url_rule
 
@@ -616,7 +596,7 @@ class APIManager:
         # word `relationships` as the name of a relation of an article
         # object.
         relationship_api_name = f'{api_name}_relationships'
-        adftmr = allow_delete_from_to_many_relationships
+
         relationship_api_view = RelationshipAPI.as_view(
             relationship_api_name, session, model, self,
             # Keyword arguments for APIBase.__init__()
@@ -626,7 +606,7 @@ class APIManager:
             validation_exceptions=validation_exceptions,
             allow_to_many_replacement=allow_to_many_replacement,
             # Keyword arguments RelationshipAPI.__init__()
-            allow_delete_from_to_many_relationships=adftmr
+            allow_delete_from_to_many_relationships=allow_delete_from_to_many_relationships
         )
         # When PATCH is allowed, certain non-PATCH requests are allowed
         # on relationship URLs.
