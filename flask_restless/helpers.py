@@ -280,10 +280,17 @@ def selectinload_included_relationships(
             options = selectinload(attribute)
             # if request contains filters we need to load all columns
             if not filters:
-                options = options.options(load_only('id'))
+                pk = get_pk_for_relationship_obj(attribute)
+                options = options.options(load_only(pk))
             query = query.options(options)
 
     return query
+
+
+def get_pk_for_relationship_obj(attribute: InstrumentedAttribute) -> str:
+    remote = 1
+    pk_cols = attribute.property.local_remote_pairs[0][remote].table.primary_key.columns
+    return pk_cols[0].name
 
 
 def get_inclusions_for_instances(include: Set[str], instances) -> Set:
